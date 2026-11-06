@@ -6,8 +6,8 @@ Two apps, both static pages, so they can be served by any web host:
 
 | App | What it is | Wavelets |
 | --- | --- | --- |
-| **Ensemble** | Compose with a year of daily ICOS data: orchestra, quartet, band or choir. Every composition is a link. | No: it plays daily values directly |
-| **Decomposition** | Half an hour of 20 Hz data split into wavelet scales. Turn scales on and off, see what they add up to, hear the result. | Yes |
+| **Ensemble** | Compose with a year of daily ICOS data: orchestra, quartet, band or choir. Every composition is a link, and downloads as MIDI. | No: it plays daily values directly |
+| **Decomposition** | Half an hour of 20 Hz data split into wavelet scales. Turn scales on and off, see what they add up to, hear the result, download the music as MIDI. | Yes |
 
 ## Apps
 

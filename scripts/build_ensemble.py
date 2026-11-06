@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from fluxscale.extra.midi import PROGRAMS
 from fluxscale.extra.sonification import INSTRUMENTS
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,7 +80,8 @@ def main():
                        lon=round(float(store.longitude.values[i]), 3), eco=str(store.ecosystem.values[i]))
                for i, s in enumerate(stations) if s in years_of})
     timbres = {name: dict(partials=[list(p) for p in t["partials"]], attack=t["attack"], release=t["release"],
-                          ring=t["ring"], vibrato=t["vibrato"]) for name, t in INSTRUMENTS.items()}
+                          ring=t["ring"], vibrato=t["vibrato"], program=PROGRAMS[name])
+               for name, t in INSTRUMENTS.items()}
 
     for year in YEARS[1:]:
         (OUT / "data" / f"{year}.json").write_text(json.dumps(packed_years[year], separators=(",", ":")))

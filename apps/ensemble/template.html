@@ -94,6 +94,7 @@
     <div class="grow"></div>
     <span class="mono" id="today">1 Jan 2022</span>
     <button class="quiet" id="share" type="button">Copy link</button>
+    <button class="quiet" id="midi" type="button" title="The whole year as notes, a track per seat. Silent seats and seats on L0 or L1 are left out.">Download MIDI</button>
     <button class="primary" id="play" type="button">Play</button>
   </header>
 
@@ -136,7 +137,7 @@
     </aside>
   </div>
 
-  <p class="credits">One note per day. L0 is the data used as a waveform, L1 a tone gliding with it, L2 notes on the harmony. No wavelets here: this page plays daily values directly. Daily data: ICOS RI et al., 2026, Ecosystem final quality (L2) product in ETC-Archive and associated formats, INTERIM release 2026-2, <a href="https://doi.org/10.18160/JX1S-VXZQ">doi.org/10.18160/JX1S-VXZQ</a>, CC BY 4.0. Land outline: Natural Earth. Only sites with at least 95% of every variable that year are offered, and a day with no data is silent. Instruments are synthesised sketches, not recordings.</p>
+  <p class="credits">One note per day. L0 is the data used as a waveform, L1 a tone gliding with it, L2 notes on the harmony. No wavelets here: this page plays daily values directly. Download MIDI writes the whole year at this tempo for a DAW or MuseScore: the notes of every seat you can hear, on the nearest equal-tempered key. L0 and L1 have no notes, so those seats are left out. Daily data: ICOS RI et al., 2026, Ecosystem final quality (L2) product in ETC-Archive and associated formats, INTERIM release 2026-2, <a href="https://doi.org/10.18160/JX1S-VXZQ">doi.org/10.18160/JX1S-VXZQ</a>, CC BY 4.0. Land outline: Natural Earth. Only sites with at least 95% of every variable that year are offered, and a day with no data is silent. Instruments are synthesised sketches, not recordings.</p>
 </div>
 
 <script type="application/json" id="meta">@@META@@</script>
@@ -420,12 +421,14 @@ function hashed(a, b) {
 
 /* ---- the audio graph -------------------------------------------------------------------- */
 let ctx = null, mixBus = null, reverb = null;
+let writing = false; // the performance is being written down as MIDI, not played
 const SAMPLE_RATE = 44100;
+const HELD_SECONDS = 5.2; // a held note has died away by then
 const samples = new Map();
 const drumKit = {};
 function renderNote(name, freq) {
   const timbre = TIMBRES[name];
-  const seconds = (timbre.ring || 5.2) + 0.25;
+  const seconds = (timbre.ring || HELD_SECONDS) + 0.25;
   const n = Math.floor(seconds * SAMPLE_RATE);
   const out = new Float32Array(n);
   const top = 0.33 * SAMPLE_RATE;
@@ -544,6 +547,11 @@ function applyLevel(seat, smoothing = 0.03) {
   seat.bus.level.gain.setTargetAtTime(level, ctx.currentTime, smoothing || 0.001);
 }
 function release(seat, when) {
+  if (writing) {
+    for (const note of seat.held) note.stop = Math.min(note.stop, when);
+    seat.held = [];
+    return;
+  }
   const fade = (TIMBRES[seat.instrument] || { release: 0.05 }).release;
   for (const voice of seat.voices) {
     voice.env.gain.setValueAtTime(voice.velocity, when);
@@ -554,6 +562,12 @@ function release(seat, when) {
 }
 function strike(seat, f, when, velocity, keep) {
   const timbre = TIMBRES[seat.instrument];
+  if (writing) {
+    if (!timbre.ring && !keep) release(seat, when);
+    const note = writeNote(seat, keyOf(f), when, timbre.ring || HELD_SECONDS, velocity);
+    if (!timbre.ring) seat.held.push(note);
+    return;
+  }
   const { buffer, rate } = sampleFor(seat.instrument, f);
   const node = ctx.createBufferSource();
   node.buffer = buffer;
@@ -572,6 +586,7 @@ function strike(seat, f, when, velocity, keep) {
   }
 }
 function hitDrum(seat, name, when, velocity) {
+  if (writing) { writeNote(seat, DRUM_KEYS[name], when, stepSeconds() / 2, velocity); return; }
   const node = ctx.createBufferSource(), env = ctx.createGain();
   node.buffer = drumKit[name];
   env.gain.value = velocity;
@@ -683,7 +698,7 @@ function rawWave(seat, day) {
   return ctx.createPeriodicWave(real, imag);
 }
 function stopDrone(seat, when) {
-  if (!seat.drone) return;
+  if (writing || !seat.drone) return;
   seat.drone.gain.gain.setTargetAtTime(0, when, 0.05);
   seat.drone.osc.stop(when + 0.4);
   seat.drone = null;
@@ -717,7 +732,7 @@ function playStep(step, when, dur) {
     if (seat.level === 2 || seat.role === "drums") {
       stopDrone(seat, when);
       ROLES[seat.role](seat, v, step, when, dur, h);
-    } else {
+    } else if (!writing) { // a glide or a waveform has no notes to write down
       continuous(seat, v, day, when, dur);
     }
   }
@@ -1118,6 +1133,71 @@ async function perform(piece) {
   if (wasPlaying) start();
 }
 
+/* ---- the score as MIDI: the same performance, written down instead of played -------------- */
+const TICKS_PER_BEAT = 480;
+const DRUM_CHANNEL = 9; // a drum kit in General MIDI, whatever the program
+const DRUM_KEYS = { kick: 36, snare: 38, hat: 42, open: 46, tom: 45, crash: 49 };
+const keyOf = (f) => clamp(Math.round(69 + 12 * Math.log2(f / 440)), 0, 127);
+function writeNote(seat, key, when, seconds, velocity) {
+  const note = { start: when, stop: when + seconds, key, velocity };
+  seat.written.push(note);
+  return note;
+}
+const bigEndian = (value, size) => Array.from({ length: size }, (_, k) => (value >>> (8 * (size - 1 - k))) & 255);
+function varLength(value) {
+  const bytes = [value & 127];
+  while ((value >>>= 7)) bytes.unshift((value & 127) | 128);
+  return bytes;
+}
+const chunk = (name, body) => [...new TextEncoder().encode(name), ...bigEndian(body.length, 4), ...body];
+function named(text) {
+  const bytes = new TextEncoder().encode(text);
+  return [0, 0xff, 0x03, ...varLength(bytes.length), ...bytes];
+}
+function trackOf(seat, channel, perSecond) {
+  const played = seat.written
+    .map(({ start, stop, key, velocity }) => [Math.round(start * perSecond), Math.round(stop * perSecond), key, clamp(Math.round(127 * velocity), 1, 127)])
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3]);
+  const events = [], again = new Map();
+  for (const [start, end, key, velocity] of played.reverse()) {
+    const stop = Math.min(end, again.get(key) ?? end); // a key cannot sound twice, so a ringing note stops where it is played again
+    again.set(key, start);
+    if (stop > start) events.push([start, 1, key, velocity], [stop, 0, key, 0]);
+  }
+  events.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]); // offs first, for a key played again
+  const body = named(seat.name + " (" + seat.site + " " + VARS[seat.variable].short + ")");
+  if (channel !== DRUM_CHANNEL) body.push(0, 0xc0 | channel, TIMBRES[seat.instrument].program);
+  let now = 0;
+  for (const [tick, on, key, velocity] of events) {
+    body.push(...varLength(tick - now), (on ? 0x90 : 0x80) | channel, key, velocity);
+    now = tick;
+  }
+  body.push(0, 0xff, 0x2f, 0);
+  return chunk("MTrk", body);
+}
+/* A file of the whole year, or null if nobody plays a note. Leaves a performance in progress alone. */
+function scoreAsMidi() {
+  const dur = stepSeconds(), kept = state.seats.map((seat) => [seat.last, seat.prev]);
+  state.seats.forEach((seat) => { seat.last = null; seat.prev = null; seat.written = []; seat.held = []; });
+  writing = true;
+  try {
+    for (let step = 0; step < days(); step++) playStep(step, step * dur, dur);
+    state.seats.forEach((seat) => release(seat, days() * dur));
+  } finally {
+    writing = false;
+    state.seats.forEach((seat, k) => { [seat.last, seat.prev] = kept[k]; });
+  }
+  const parts = state.seats.filter((seat) => !isSilent(seat) && seat.written.length);
+  if (!parts.length) return null;
+  const free = Array.from({ length: 16 }, (_, channel) => channel).filter((channel) => channel !== DRUM_CHANNEL);
+  const perSecond = TICKS_PER_BEAT / 2 / dur; // a day is an eighth note
+  const tracks = parts.map((seat, k) => trackOf(seat, seat.role === "drums" ? DRUM_CHANNEL : free[k], perSecond));
+  const conductor = [...named(ENSEMBLES[state.ensemble].label + " " + state.year + ", " + state.sites.join(", ")),
+    0, 0xff, 0x51, 3, ...bigEndian(Math.round(60e6 / state.bpm), 3), 0, 0xff, 0x2f, 0];
+  const header = chunk("MThd", [0, 1, ...bigEndian(parts.length + 1, 2), ...bigEndian(TICKS_PER_BEAT, 2)]);
+  return Uint8Array.from([...header, ...chunk("MTrk", conductor), ...tracks.flat()]);
+}
+
 /* ---- wiring ----------------------------------------------------------------------------- */
 function wire() {
   for (const name in ENSEMBLES) {
@@ -1148,6 +1228,19 @@ function wire() {
       e.target.textContent = "Link in address bar";
     }
     setTimeout(() => { e.target.textContent = "Copy link"; }, 1800);
+  });
+  $("midi").addEventListener("click", (e) => {
+    const bytes = scoreAsMidi();
+    if (!bytes) {
+      e.target.textContent = "No notes to write";
+      setTimeout(() => { e.target.textContent = "Download MIDI"; }, 1800);
+      return;
+    }
+    const link = html("a"), url = URL.createObjectURL(new Blob([bytes], { type: "audio/midi" }));
+    link.href = url;
+    link.download = "flux-ensemble-" + state.ensemble + "-" + state.year + ".mid";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
   $("toggle-picker").addEventListener("click", (e) => {
     const open = $("picker").hidden;
@@ -1234,7 +1327,7 @@ function boot() {
   drawChips(); fillSitePicker();
   setEnsemble("orchestra");
   requestAnimationFrame(frame);
-  window.ensemble = { state, renderOffline, setEnsemble, setSites, composition, perform };
+  window.ensemble = { state, renderOffline, setEnsemble, setSites, composition, perform, scoreAsMidi };
   if (location.hash.length > 8) {
     try { perform(fromHash(location.hash.slice(1))); } catch (error) { /* not a composition */ }
   }
