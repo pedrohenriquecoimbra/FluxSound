@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FluxSound</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="base.css">
+<style>
+.intro { display: grid; gap: 0.5rem; padding-block: 3rem 1.5rem; max-width: 60ch; }
+.intro h1 { font: 600 2rem/1.1 var(--sans); letter-spacing: -0.02em; }
+.apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.9rem; }
+.apps a { display: grid; gap: 0.3rem; padding: 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; color: inherit; text-decoration: none; }
+.apps a:hover { border-color: var(--ink-3); }
+.apps b { font: 600 1rem/1.2 var(--sans); }
+.apps span { color: var(--ink-2); }
+</style>
+<div class="page">
+  <div class="intro">
+    <h1>FluxSound</h1>
+    <p class="hint">Hear eddy-covariance data. Built on <a href="https://github.com/pedrohenriquecoimbra/wavelet-ec">waveletec</a> and open data from ICOS.</p>
+  </div>
+  <div class="apps">
+    <a href="ensemble/"><b>Ensemble</b><span>Compose with a year of data from 60 sites: orchestra, quartet, band or choir. Every composition is a link.</span></a>
+    <a href="decomposition/"><b>Decomposition</b><span>See and hear half an hour of tower data, wavelet scale by wavelet scale.</span></a>
+  </div>
+</div>
+</html>

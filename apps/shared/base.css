@@ -1,0 +1,87 @@
+/* Shared by both apps. Monochrome interface; colour is kept for data.
+   Layout: one column of instrument-like rows on a shared time axis. */
+:root {
+  --bg: #f3f4f6; --surface: #ffffff; --raised: #e9ebef;
+  --ink: #0f1318; --ink-2: #414955; --ink-3: #5c6572;
+  --line: #e1e4e9; --line-strong: #c6ccd4;
+  --primary: #0f1318; --on-primary: #ffffff;
+  --site-1: #2a78d6; --site-2: #eb6834; --site-3: #1baf7a; --site-4: #eda100;
+  --down: #2a78d6; --up: #d95926; --mid: #eef0f3;
+  --sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1013; --surface: #15181c; --raised: #20242a;
+    --ink: #eef0f3; --ink-2: #b6bcc6; --ink-3: #8e96a2;
+    --line: #262a31; --line-strong: #39404a;
+    --primary: #eef0f3; --on-primary: #0e1013;
+    --site-1: #3987e5; --site-2: #d95926; --site-3: #199e70; --site-4: #c98500;
+    --down: #3987e5; --up: #e56a35; --mid: #20242a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1013; --surface: #15181c; --raised: #20242a;
+  --ink: #eef0f3; --ink-2: #b6bcc6; --ink-3: #8e96a2;
+  --line: #262a31; --line-strong: #39404a;
+  --primary: #eef0f3; --on-primary: #0e1013;
+  --site-1: #3987e5; --site-2: #d95926; --site-3: #199e70; --site-4: #c98500;
+  --down: #3987e5; --up: #e56a35; --mid: #20242a;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 0.875rem/1.45 var(--sans); }
+h1, h2, h3, p { margin: 0; }
+.page {
+  max-width: 82rem; margin-inline: auto; display: grid; gap: 0.9rem;
+  padding-block: 0 2.5rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.page > * { min-width: 0; }
+.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem;
+  padding-block: 0.7rem; border-bottom: 1px solid var(--line);
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.brand { font: 600 1rem/1 var(--sans); letter-spacing: -0.01em; }
+.grow { flex: 1 1 0; min-width: 0; }
+.seg { display: inline-flex; background: var(--raised); padding: 2px; border-radius: 8px; max-width: 100%; overflow-x: auto; }
+.seg button {
+  border: 0; background: transparent; padding: 0.3rem 0.62rem; border-radius: 6px; cursor: pointer;
+  font: 500 0.8rem/1.2 var(--sans); color: var(--ink-2); white-space: nowrap;
+}
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
+.seg.small button { padding: 0.2rem 0.38rem; font: 500 0.7rem/1.2 var(--mono); }
+.seg button:disabled { opacity: 0.4; cursor: not-allowed; }
+.primary {
+  border: 0; border-radius: 8px; padding: 0.42rem 0.9rem; cursor: pointer; min-width: 4.6rem;
+  background: var(--primary); color: var(--on-primary); font: 600 0.82rem/1.2 var(--sans);
+}
+.quiet {
+  border: 1px solid var(--line-strong); border-radius: 6px; background: transparent; cursor: pointer;
+  padding: 0.24rem 0.5rem; font: 500 0.76rem/1.2 var(--sans); color: var(--ink-2);
+}
+.quiet:hover { color: var(--ink); border-color: var(--ink-3); }
+.quiet[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+select {
+  font: 400 0.8rem/1.2 var(--sans); color: var(--ink); background: var(--surface); max-width: 100%;
+  border: 1px solid var(--line-strong); border-radius: 6px; padding: 0.24rem 0.3rem;
+}
+input[type="range"] { accent-color: var(--ink-2); width: 100%; margin: 0; min-width: 0; }
+.label { font: 500 0.72rem/1.2 var(--sans); color: var(--ink-3); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.hint { font-size: 0.8rem; color: var(--ink-3); max-width: 70ch; }
+.credits { font-size: 0.74rem; color: var(--ink-3); max-width: 100ch; }
+.credits a { color: var(--ink-2); }
+.tip {
+  position: absolute; pointer-events: none; z-index: 4; padding: 0.22rem 0.45rem; white-space: nowrap;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: 6px;
+  font: 400 0.72rem/1.3 var(--mono); color: var(--ink-3);
+}
+.tip strong { display: block; color: var(--ink); font-weight: 500; font-size: 0.8rem; }
+@media (max-width: 44rem) { .top { position: static; } }

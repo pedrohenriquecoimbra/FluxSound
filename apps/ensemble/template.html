@@ -1,0 +1,1244 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flux Ensemble</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+@@BASE_CSS@@
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; }
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+.chip {
+  display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.45rem; cursor: pointer;
+  border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface);
+  color: var(--ink); font: 500 0.76rem/1.2 var(--mono);
+}
+.chip i, .who i { width: 0.6rem; height: 0.6rem; border-radius: 50%; flex: none; }
+.chip span { color: var(--ink-3); }
+.field { display: inline-flex; align-items: center; gap: 0.35rem; }
+#tempo { width: 6.5rem; }
+#picker { display: grid; grid-template-columns: minmax(0, 16rem) minmax(0, 1fr); gap: 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0.8rem; }
+#picker > div { display: grid; gap: 0.5rem; align-content: start; min-width: 0; }
+#map { display: block; width: 100%; max-height: 15rem; }
+#map path { fill: var(--raised); }
+#map .dot { fill: var(--ink-3); cursor: pointer; stroke: var(--surface); stroke-width: 0.8; }
+#map .dot:hover { fill: var(--ink); }
+#map .picked { stroke: var(--ink); stroke-width: 1.1; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 15rem; gap: 0.9rem; align-items: start; }
+.layout > * { min-width: 0; }
+.score { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.row, .months, .section {
+  display: grid; grid-template-columns: 7.5rem 7.5rem minmax(0, 1fr) 5.4rem 4.6rem 3.2rem;
+  align-items: center; gap: 0.6rem; padding-inline: 0.7rem;
+}
+.months { height: 1.5rem; font: 400 0.68rem/1 var(--mono); color: var(--ink-3); }
+.months .axis { grid-column: 3; position: relative; height: 100%; }
+.months .axis span { position: absolute; top: 0.42rem; transform: translateX(-50%); }
+.section { min-height: 1.9rem; border-top: 1px solid var(--line); background: var(--bg); }
+.section b { font-weight: 600; font-size: 0.78rem; }
+.section .family { grid-column: 2 / span 2; font-size: 0.74rem; color: var(--ink-3); }
+.section input { grid-column: 5; }
+.row { min-height: 2.5rem; border-top: 1px solid var(--line); cursor: pointer; }
+.row:hover { background: var(--bg); }
+.row.selected { background: var(--raised); }
+.row.silent .track, .row.silent .name, .row.silent .who { opacity: 0.4; }
+.name { font-weight: 500; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who { display: flex; align-items: center; gap: 0.35rem; font: 400 0.72rem/1.2 var(--mono); color: var(--ink-2); white-space: nowrap; overflow: hidden; }
+.track { display: block; width: 100%; height: 2.1rem; min-width: 0; }
+.row .ms { display: flex; gap: 0.2rem; }
+.row .ms .quiet { padding: 0.16rem 0.3rem; font: 500 0.68rem/1.2 var(--mono); }
+.editor {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 0.5rem 0.7rem; align-items: end;
+  padding: 0.55rem 0.7rem 0.7rem; background: var(--raised); border-top: 1px solid var(--line);
+}
+.editor label { display: grid; gap: 0.15rem; min-width: 0; }
+.editor .give { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
+.editor .note { grid-column: 1 / -1; font-size: 0.76rem; color: var(--ink-2); }
+#playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--ink); pointer-events: none; z-index: 2; }
+
+.plan { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0.7rem; display: grid; gap: 0.5rem; position: sticky; top: 4.2rem; }
+#seating { display: block; width: 100%; height: auto; }
+#seating .seat { cursor: pointer; }
+#seating .seat text { font: 500 8.5px var(--mono); fill: var(--ink-3); text-anchor: middle; }
+#seating .seat circle { stroke: var(--surface); stroke-width: 1.5; }
+#seating .seat.selected circle { stroke: var(--ink); stroke-width: 2; }
+#seating .seat.silent circle { opacity: 0.3; }
+@media (max-width: 66rem) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .plan { position: static; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); align-items: center; }
+}
+@media (max-width: 44rem) {
+  .row, .months, .section { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 3.2rem; gap: 0.2rem 0.5rem; padding-block: 0.3rem; }
+  .row .name { grid-column: 1; }
+  .row .who { grid-column: 2 / span 2; }
+  .row .track { grid-column: 1 / -1; grid-row: 2; }
+  .row .levels { grid-column: 1; grid-row: 3; }
+  .row .volume { grid-column: 2; grid-row: 3; }
+  .row .ms { grid-column: 3; grid-row: 3; }
+  .months { display: none; }
+  .section .family { grid-column: 2; }
+  .section input { grid-column: 2 / span 2; grid-row: 2; }
+  .editor { grid-template-columns: minmax(0, 1fr); }
+  #picker, .plan { grid-template-columns: minmax(0, 1fr); }
+  #playhead { display: none; }
+}
+</style>
+
+<div class="page">
+  <header class="top">
+    <h1 class="brand">Flux Ensemble</h1>
+    <div class="seg" id="ensembles" role="group" aria-label="Ensemble"></div>
+    <label class="field label">Start from <select id="piece"></select></label>
+    <div class="grow"></div>
+    <span class="mono" id="today">1 Jan 2022</span>
+    <button class="quiet" id="share" type="button">Copy link</button>
+    <button class="primary" id="play" type="button">Play</button>
+  </header>
+
+  <section class="bar" aria-label="Programme">
+    <div class="chips" id="chips"></div>
+    <button class="quiet" id="toggle-picker" type="button" aria-expanded="false">Choose sites</button>
+    <div class="grow"></div>
+    <label class="field label">Year <select id="year"></select></label>
+    <label class="field label">Harmony
+      <select id="harmony">
+        <option value="open">Open</option>
+        <option value="four">Four chords</option>
+        <option value="flux">Follows the flux</option>
+      </select>
+    </label>
+    <label class="field label">Tempo <input id="tempo" type="range" min="50" max="170" step="1"> <span class="mono" id="tempo-value"></span></label>
+  </section>
+
+  <section id="picker" hidden aria-label="Sites">
+    <div><svg id="map" role="group" aria-label="Sites with complete data this year"></svg></div>
+    <div>
+      <p class="hint">Up to four sites. Sections are variable families, so one site fills every desk and several sites share them, west to east.</p>
+      <label class="label" for="add-site">Add by ecosystem</label>
+      <select id="add-site"></select>
+      <p class="mono hint" id="map-tip"></p>
+      <div class="chips" id="presets"></div>
+    </div>
+  </section>
+
+  <div class="layout">
+    <section class="score" id="score" aria-label="Players">
+      <div class="months"><div class="axis" id="months"></div></div>
+      <div id="rows"></div>
+      <div id="playhead"></div>
+      <div class="tip" id="tip" hidden><strong></strong><span></span></div>
+    </section>
+    <aside class="plan" aria-label="Seating">
+      <svg id="seating" viewBox="0 0 300 200" role="group" aria-label="Seating plan from above"></svg>
+      <p class="hint">Seen from above. Left and right here is left and right in the sound. Colour is the site.</p>
+    </aside>
+  </div>
+
+  <p class="credits">One note per day. L0 is the data used as a waveform, L1 a tone gliding with it, L2 notes on the harmony. No wavelets here: this page plays daily values directly. Daily data: ICOS RI et al., 2026, Ecosystem final quality (L2) product in ETC-Archive and associated formats, INTERIM release 2026-2, <a href="https://doi.org/10.18160/JX1S-VXZQ">doi.org/10.18160/JX1S-VXZQ</a>, CC BY 4.0. Land outline: Natural Earth. Only sites with at least 95% of every variable that year are offered, and a day with no data is silent. Instruments are synthesised sketches, not recordings.</p>
+</div>
+
+<script type="application/json" id="meta">@@META@@</script>
+<script type="application/json" id="timbres">@@TIMBRES@@</script>
+<script type="application/json" id="land">@@LAND@@</script>
+<script type="application/json" id="first-year">@@YEAR@@</script>
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const read = (id) => JSON.parse($(id).textContent);
+const META = read("meta"), TIMBRES = read("timbres"), LAND = read("land");
+const VARS = Object.fromEntries(META.vars.map((v) => [v.id, v]));
+const SVG = "http://www.w3.org/2000/svg";
+const svg = (tag, attrs, parent) => {
+  const node = document.createElementNS(SVG, tag);
+  for (const key in attrs) node.setAttribute(key, attrs[key]);
+  if (parent) parent.appendChild(node);
+  return node;
+};
+const html = (tag, className, parent, text) => {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  if (parent) parent.appendChild(node);
+  return node;
+};
+const clamp = (x, a, b) => Math.min(Math.max(x, a), b);
+
+/* ---- what can be played ---------------------------------------------------------------- */
+const FAMILIES = {
+  carbon: { label: "Carbon", vars: ["NEE_VUT_REF", "GPP_NT_VUT_REF", "RECO_NT_VUT_REF"] },
+  water: { label: "Water", vars: ["LE_F_MDS", "VPD_F"] },
+  energy: { label: "Heat and light", vars: ["H_F_MDS", "SW_IN_F", "TA_F"] },
+  weather: { label: "Weather", vars: ["P_F", "WS_F"] },
+};
+const NATURAL_RANGE = {
+  flute: [262, 2093], clarinet: [147, 1568], oboe: [233, 1397], bassoon: [58, 523], saxophone: [139, 880],
+  horn: [87, 698], trumpet: [165, 1175], trombone: [82, 523], violin: [196, 2093], viola: [131, 1047],
+  cello: [65, 698], double_bass: [41, 247], voice: [131, 880], organ: [65, 1047], accordion: [131, 1047],
+  bell: [262, 2093], piano: [55, 2093], harp: [65, 2093], harpsichord: [87, 1397], guitar: [82, 880],
+  electric_guitar: [82, 880], bass_guitar: [41, 247], pizzicato: [65, 698], marimba: [131, 2093],
+  vibraphone: [175, 1397], glockenspiel: [784, 3136], celesta: [262, 2093], timpani: [65, 196], kalimba: [196, 1047],
+};
+const ROLE_LEVEL = { melody: 0.9, half: 0.7, long: 0.5, chords: 0.4, bass: 0.8, arp: 0.45, hit: 0.85, power: 0.55, drums: 0.9 };
+const polar = (deg, r) => [500 + 1.22 * r * Math.sin(deg * Math.PI / 180), 604 - r * Math.cos(deg * Math.PI / 180)];
+const ENSEMBLES = {
+  orchestra: {
+    label: "Orchestra", bpm: 96,
+    sections: [
+      { id: "strings", label: "Strings", family: "carbon" },
+      { id: "winds", label: "Woodwinds", family: "water" },
+      { id: "brass", label: "Brass", family: "energy" },
+      { id: "percussion", label: "Percussion", family: "weather" },
+    ],
+    seats: [
+      ["strings", "Violins I", "Vln", "violin", "melody", 880, polar(-58, 215)],
+      ["strings", "Violins II", "Vln", "violin", "half", 587, polar(-23, 205)],
+      ["strings", "Violas", "Vla", "viola", "long", 392, polar(23, 205)],
+      ["strings", "Cellos", "Vc", "cello", "long", 196, polar(58, 215)],
+      ["strings", "Double basses", "Cb", "double_bass", "bass", 82, polar(66, 345)],
+      ["winds", "Flutes", "Fl", "flute", "half", 1047, polar(-27, 325)],
+      ["winds", "Oboes", "Ob", "oboe", "long", 587, polar(-9, 325)],
+      ["winds", "Clarinets", "Cl", "clarinet", "arp", 440, polar(9, 325)],
+      ["winds", "Bassoons", "Fg", "bassoon", "long", 131, polar(27, 325)],
+      ["brass", "Horns", "Hn", "horn", "long", 262, polar(-14, 455)],
+      ["brass", "Trumpets", "Tpt", "trumpet", "half", 587, polar(7, 455)],
+      ["brass", "Trombones", "Tbn", "trombone", "long", 175, polar(28, 455)],
+      ["percussion", "Timpani", "Tmp", "timpani", "hit", 110, polar(-33, 470), "P_F"],
+      ["percussion", "Glockenspiel", "Glk", "glockenspiel", "arp", 1568, polar(-56, 415)],
+      ["percussion", "Harp", "Hp", "harp", "arp", 392, polar(-70, 340)],
+    ],
+  },
+  quartet: {
+    label: "Quartet", bpm: 72,
+    sections: [{ id: "quartet", label: "String quartet", family: "carbon", vars: ["NEE_VUT_REF", "GPP_NT_VUT_REF", "RECO_NT_VUT_REF", "LE_F_MDS"] }],
+    seats: [
+      ["quartet", "First violin", "Vln", "violin", "melody", 880, polar(-52, 245)],
+      ["quartet", "Second violin", "Vln", "violin", "half", 587, polar(-20, 300)],
+      ["quartet", "Viola", "Vla", "viola", "half", 392, polar(20, 300)],
+      ["quartet", "Cello", "Vc", "cello", "long", 165, polar(52, 245)],
+    ],
+  },
+  rock: {
+    label: "Band", bpm: 126,
+    sections: [
+      { id: "rhythm", label: "Rhythm", family: "weather", vars: ["WS_F", "TA_F"] },
+      { id: "guitars", label: "Guitars", family: "carbon", vars: ["GPP_NT_VUT_REF", "RECO_NT_VUT_REF"] },
+      { id: "front", label: "Front line", family: "energy", vars: ["NEE_VUT_REF", "SW_IN_F"] },
+    ],
+    seats: [
+      ["rhythm", "Drums", "Dr", "drums", "drums", 110, [500, 170], "WS_F"],
+      ["rhythm", "Bass", "Bs", "bass_guitar", "bass", 82, [250, 225]],
+      ["guitars", "Lead guitar", "Gt", "electric_guitar", "melody", 523, [345, 400]],
+      ["guitars", "Rhythm guitar", "Gt", "electric_guitar", "power", 165, [750, 225]],
+      ["front", "Vocals", "Vx", "voice", "half", 392, [500, 470]],
+      ["front", "Keys", "Ky", "organ", "chords", 330, [790, 400]],
+    ],
+  },
+  choir: {
+    label: "Choir", bpm: 66,
+    sections: [
+      { id: "sopranos", label: "Sopranos", family: "carbon", vars: ["GPP_NT_VUT_REF"] },
+      { id: "altos", label: "Altos", family: "carbon", vars: ["NEE_VUT_REF"] },
+      { id: "tenors", label: "Tenors", family: "water", vars: ["LE_F_MDS"] },
+      { id: "basses", label: "Basses", family: "energy", vars: ["TA_F"] },
+    ],
+    seats: [
+      ["sopranos", "Sopranos I", "S", "voice", "half", 784, polar(-58, 260)],
+      ["sopranos", "Sopranos II", "S", "voice", "long", 659, polar(-44, 345)],
+      ["altos", "Altos I", "A", "voice", "long", 494, polar(-17, 300)],
+      ["altos", "Altos II", "A", "voice", "long", 392, polar(-13, 410)],
+      ["tenors", "Tenors I", "T", "voice", "long", 330, polar(17, 300)],
+      ["tenors", "Tenors II", "T", "voice", "long", 262, polar(13, 410)],
+      ["basses", "Basses I", "B", "voice", "long", 196, polar(44, 345)],
+      ["basses", "Basses II", "B", "voice", "bass", 131, polar(58, 260)],
+    ],
+  },
+};
+const PRESETS = [
+  { label: "North to south", sites: ["FI-Hyy", "DK-Sor", "FR-Gri", "ES-LMa"] },
+  { label: "Crop, forest, bog", sites: ["FR-Gri", "DE-Hai", "SE-Deg"] },
+  { label: "FR-Gri alone", sites: ["FR-Gri"] },
+];
+const PIECES = [
+  { label: "Drought summer, orchestra", ensemble: "orchestra", year: 2022, harmony: "flux", sites: ["ES-LMa", "FR-Gri", "DE-Hai"] },
+  { label: "North to south, quartet", ensemble: "quartet", year: 2023, harmony: "open", sites: ["FI-Hyy", "DK-Sor", "FR-Gri", "ES-LMa"] },
+  { label: "Four chords, band", ensemble: "rock", year: 2022, harmony: "four", sites: ["FR-Gri"] },
+  { label: "One field, choir", ensemble: "choir", year: 2022, harmony: "open", sites: ["FR-Gri"] },
+];
+const ECO_GROUPS = [
+  ["Forests", /Forest/], ["Croplands", /Crop/], ["Grasslands", /Grass/], ["Wetlands", /Wetland/], ["Shrublands and savannas", /Shrub|Savanna/],
+];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/* ---- data ------------------------------------------------------------------------------ */
+const years = {};
+function decode(raw) {
+  const sites = {};
+  for (const id of Object.keys(raw.sites)) {
+    const bytes = Uint8Array.from(atob(raw.sites[id]), (c) => c.charCodeAt(0));
+    const ints = new Int16Array(bytes.buffer);
+    const table = {};
+    META.vars.forEach((variable, k) => {
+      const column = new Float32Array(raw.days);
+      for (let d = 0; d < raw.days; d++) {
+        const q = ints[k * raw.days + d];
+        column[d] = q === -32768 ? NaN : META.offset[k] + (q + 32000) * META.scale[k];
+      }
+      table[variable.id] = column;
+    });
+    sites[id] = table;
+  }
+  return { year: raw.year, days: raw.days, sites };
+}
+async function loadYear(year) {
+  if (!years[year]) {
+    const response = await fetch("data/" + year + ".json");
+    if (!response.ok) throw new Error(String(response.status));
+    years[year] = decode(await response.json());
+  }
+  return years[year];
+}
+
+/* ---- state ----------------------------------------------------------------------------- */
+const state = {
+  year: META.years[0], ensemble: "orchestra", harmony: "open", bpm: 96,
+  sites: ["ES-LMa", "FR-Gri", "FI-Hyy"], seats: [], selected: -1, step: 0, sections: {},
+};
+const data = () => years[state.year];
+const days = () => data().days;
+const siteToken = (site) => {
+  const k = state.sites.indexOf(site);
+  return k < 0 ? "--ink-3" : "--site-" + (k + 1);
+};
+const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+function seatsFor(ensemble) {
+  return ENSEMBLES[ensemble].seats.map(([section, name, abbr, instrument, role, centre, at, fixed], index) => ({
+    index, section, name, abbr, instrument, role, centre, x: at[0], y: at[1], fixed,
+    site: null, variable: null, level: 2, volume: 1, mute: false, solo: false,
+    last: null, prev: null, voices: [], drone: null, bus: null,
+  }));
+}
+function reseat() {
+  const sites = state.sites.slice().sort((a, b) => META.sites[a].lon - META.sites[b].lon);
+  for (const section of ENSEMBLES[state.ensemble].sections) {
+    const pool = section.vars || FAMILIES[section.family].vars;
+    state.seats.filter((seat) => seat.section === section.id).forEach((seat, i) => {
+      seat.site = sites[i % sites.length];
+      seat.variable = seat.fixed || pool[Math.floor(i / sites.length) % pool.length];
+    });
+  }
+  ranges.clear();
+}
+/* Each variable is scaled across the sites on stage, so that sites stay comparable. */
+const ranges = new Map();
+function rangeOf(variable) {
+  if (ranges.has(variable)) return ranges.get(variable);
+  const values = [];
+  for (const seat of state.seats) {
+    if (seat.variable !== variable) continue;
+    const column = data().sites[seat.site] && data().sites[seat.site][variable];
+    if (column) for (const x of column) if (Number.isFinite(x)) values.push(x);
+  }
+  values.sort((a, b) => a - b);
+  const pick = (q) => values[Math.floor(q * (values.length - 1))];
+  const range = values.length ? [variable === "P_F" ? 0 : pick(0.02), pick(0.98)] : [0, 1];
+  ranges.set(variable, range);
+  return range;
+}
+function rawValue(seat, day) {
+  const column = data().sites[seat.site] && data().sites[seat.site][seat.variable];
+  const x = column ? column[day % days()] : NaN;
+  return Number.isFinite(x) ? x : null;
+}
+function valueOf(seat, day) {
+  const x = rawValue(seat, day);
+  if (x === null) return null;
+  const [low, high] = rangeOf(seat.variable);
+  return high > low ? clamp((x - low) / (high - low), 0, 1) : 0.5;
+}
+function meanValue(seat, step, span) {
+  let sum = 0, n = 0;
+  for (let k = 0; k < span; k++) {
+    const v = valueOf(seat, (step + k) % days());
+    if (v !== null) { sum += v; n++; }
+  }
+  return n ? sum / n : null;
+}
+
+/* ---- harmony: pure ratios, as in the Python scales -------------------------------------- */
+const C1 = 32.705;
+const MAJOR = [1, 9 / 8, 5 / 4, 4 / 3, 3 / 2, 5 / 3, 15 / 8];
+const PENTATONIC = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3];
+const OPEN_CHORD = [1, 5 / 4, 3 / 2, 5 / 3];
+const TRIADS = { I: [1, 5 / 4, 3 / 2], V: [3 / 2, 15 / 8, 9 / 8], vi: [5 / 3, 1, 5 / 4], IV: [4 / 3, 5 / 3, 1] };
+function harmonyAt(step) {
+  if (state.harmony === "four") {
+    const chord = TRIADS[["I", "V", "vi", "IV"][Math.floor(step / 8) % 4]];
+    return { scale: MAJOR, chord, root: chord[0], fifth: chord[2] };
+  }
+  if (state.harmony === "flux") {
+    const site = state.sites[0], column = data().sites[site] && data().sites[site].NEE_VUT_REF;
+    let sum = 0;
+    if (column) for (let k = 0; k < 8; k++) { const x = column[(step + k) % days()]; if (Number.isFinite(x)) sum += x; }
+    const chord = sum >= 0 ? TRIADS.I : TRIADS.vi;
+    return { scale: PENTATONIC, chord, root: chord[0], fifth: chord[2] };
+  }
+  return { scale: PENTATONIC, chord: OPEN_CHORD, root: 1, fifth: 3 / 2 };
+}
+function notesIn(ratios, low, high) {
+  const notes = [];
+  for (let octave = 0; octave < 9; octave++) {
+    for (const ratio of ratios) {
+      const f = C1 * 2 ** octave * ratio;
+      if (f >= low && f <= high) notes.push(f);
+    }
+  }
+  return notes.sort((a, b) => a - b);
+}
+function registerOf(seat) {
+  const natural = NATURAL_RANGE[seat.instrument] || [65, 1047];
+  const centre = clamp(seat.centre, natural[0] * 1.41, natural[1] / 1.41);
+  return [centre / 1.41, centre * 1.41];
+}
+const targetOf = (seat, v) => {
+  const [low, high] = registerOf(seat);
+  return low * (high / low) ** v;
+};
+function nearest(notes, f) {
+  let best = notes[0];
+  for (const note of notes) if (Math.abs(Math.log2(note / f)) < Math.abs(Math.log2(best / f))) best = note;
+  return best;
+}
+const velocityOf = (v) => 0.4 + 0.6 * v;
+function hashed(a, b) {
+  const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+/* ---- the audio graph -------------------------------------------------------------------- */
+let ctx = null, mixBus = null, reverb = null;
+const SAMPLE_RATE = 44100;
+const samples = new Map();
+const drumKit = {};
+function renderNote(name, freq) {
+  const timbre = TIMBRES[name];
+  const seconds = (timbre.ring || 5.2) + 0.25;
+  const n = Math.floor(seconds * SAMPLE_RATE);
+  const out = new Float32Array(n);
+  const top = 0.33 * SAMPLE_RATE;
+  for (const [harmonic, weight, decay] of timbre.partials) {
+    if (harmonic > 1 && harmonic * freq * 1.45 > top) continue;
+    const w = 2 * Math.PI * harmonic * freq / SAMPLE_RATE;
+    const depth = harmonic * timbre.vibrato * freq / 5;
+    for (let i = 0; i < n; i++) {
+      const t = i / SAMPLE_RATE;
+      const wobble = depth ? depth * Math.min(t / 0.4, 1) * Math.sin(2 * Math.PI * 5 * t) : 0;
+      out[i] += weight * Math.exp(-t / decay) * Math.sin(w * i + wobble);
+    }
+  }
+  const rise = Math.max(Math.floor(timbre.attack * SAMPLE_RATE), 1);
+  for (let i = 0; i < rise; i++) out[i] *= 0.5 - 0.5 * Math.cos(Math.PI * i / rise);
+  const fall = Math.floor(0.2 * SAMPLE_RATE);
+  for (let i = 0; i < fall; i++) out[n - 1 - i] *= 0.5 - 0.5 * Math.cos(Math.PI * i / fall);
+  let power = 0;
+  const span = Math.min(n, Math.floor(0.4 * SAMPLE_RATE));
+  for (let i = 0; i < span; i++) power += out[i] * out[i];
+  const gain = 0.2 / Math.sqrt(power / span + 1e-9);
+  for (let i = 0; i < n; i++) out[i] *= gain;
+  const buffer = new AudioBuffer({ length: n, numberOfChannels: 1, sampleRate: SAMPLE_RATE });
+  buffer.copyToChannel(out, 0);
+  return buffer;
+}
+const referenceOf = (f) => 65.41 * 2 ** Math.round(Math.log2(f / 65.41));
+function sampleFor(name, f) {
+  const ref = referenceOf(f), key = name + "@" + ref;
+  if (!samples.has(key)) samples.set(key, renderNote(name, ref));
+  return { buffer: samples.get(key), rate: f / ref };
+}
+function burst(seconds, shape) {
+  const n = Math.floor(seconds * SAMPLE_RATE), out = new Float32Array(n);
+  let seed = 22222, last = 0;
+  const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 1073741823.5 - 1; };
+  for (let i = 0; i < n; i++) { const white = rand(); out[i] = shape(i / SAMPLE_RATE, white, last); last = white; }
+  const buffer = new AudioBuffer({ length: n, numberOfChannels: 1, sampleRate: SAMPLE_RATE });
+  buffer.copyToChannel(out, 0);
+  return buffer;
+}
+function buildDrums() {
+  drumKit.kick = burst(0.32, (t) => 0.9 * Math.exp(-t / 0.09) * Math.sin(2 * Math.PI * (48 * t + 16 * (1 - Math.exp(-t / 0.03)))));
+  drumKit.snare = burst(0.24, (t, n) => Math.exp(-t / 0.06) * (0.55 * n + 0.4 * Math.sin(2 * Math.PI * 190 * t)));
+  drumKit.hat = burst(0.07, (t, n, p) => 0.5 * Math.exp(-t / 0.018) * (n - p));
+  drumKit.open = burst(0.3, (t, n, p) => 0.42 * Math.exp(-t / 0.09) * (n - p));
+  drumKit.tom = burst(0.3, (t) => 0.7 * Math.exp(-t / 0.11) * Math.sin(2 * Math.PI * 120 * t * (1 - 0.15 * t)));
+  drumKit.crash = burst(1.5, (t, n, p) => 0.34 * Math.exp(-t / 0.5) * (n - p));
+}
+function impulse(context) {
+  const seconds = 2.2, n = Math.floor(seconds * context.sampleRate);
+  const buffer = context.createBuffer(2, n, context.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const channel = buffer.getChannelData(c);
+    let dark = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / context.sampleRate, white = Math.random() * 2 - 1;
+      dark += 0.12 * (white - dark);
+      channel[i] = dark * Math.exp(-6.9 * t / seconds) + 0.3 * white * Math.exp(-6.9 * t / (0.2 * seconds));
+    }
+  }
+  return buffer;
+}
+function buildGraph(context) {
+  const mix = context.createGain();
+  const room = context.createConvolver();
+  room.buffer = impulse(context);
+  const roomLevel = context.createGain();
+  roomLevel.gain.value = 0.55;
+  const squeeze = context.createDynamicsCompressor();
+  squeeze.threshold.value = -16; squeeze.knee.value = 14; squeeze.ratio.value = 4;
+  squeeze.attack.value = 0.006; squeeze.release.value = 0.22;
+  const safe = context.createWaveShaper();
+  const curve = new Float32Array(2049);
+  for (let i = 0; i < curve.length; i++) curve[i] = Math.tanh(1.1 * (i / 1024 - 1)) / Math.tanh(1.1);
+  safe.curve = curve;
+  const trim = context.createGain();
+  trim.gain.value = 0.89; // 1 dB of headroom after the soft ceiling
+  mix.connect(squeeze);
+  room.connect(roomLevel); roomLevel.connect(squeeze);
+  squeeze.connect(safe); safe.connect(trim); trim.connect(context.destination);
+  return { mix, room };
+}
+function buildBus(seat) {
+  const input = ctx.createGain(), level = ctx.createGain(), pan = ctx.createStereoPanner(), send = ctx.createGain();
+  pan.pan.value = clamp((seat.x - 500) / 480, -0.85, 0.85);
+  send.gain.value = 0.12 + 0.3 * (1 - seat.y / 650);
+  let head = input;
+  if (seat.instrument === "electric_guitar") {
+    const drive = ctx.createWaveShaper(), curve = new Float32Array(1025);
+    for (let i = 0; i < curve.length; i++) curve[i] = Math.tanh(5 * (i / 512 - 1));
+    drive.curve = curve;
+    const tone = ctx.createBiquadFilter();
+    tone.type = "lowpass"; tone.frequency.value = 3400;
+    const trim = ctx.createGain();
+    trim.gain.value = 0.45;
+    head.connect(drive); drive.connect(tone); tone.connect(trim);
+    head = trim;
+  }
+  head.connect(level); level.connect(pan); pan.connect(mixBus);
+  level.connect(send); send.connect(reverb);
+  return { input, level, instrument: seat.instrument };
+}
+function bus(seat) {
+  if (!seat.bus || seat.bus.instrument !== seat.instrument) { seat.bus = buildBus(seat); applyLevel(seat, 0); }
+  return seat.bus;
+}
+function isSilent(seat) {
+  const anySolo = state.seats.some((s) => s.solo);
+  return seat.mute || (anySolo && !seat.solo);
+}
+function applyLevel(seat, smoothing = 0.03) {
+  if (!seat.bus) return;
+  const crowd = 1 / Math.sqrt(Math.max(state.seats.length / 4, 1));
+  const level = isSilent(seat) ? 0 : seat.volume * (state.sections[seat.section] ?? 1) * (ROLE_LEVEL[seat.role] || 0.6) * crowd;
+  seat.bus.level.gain.setTargetAtTime(level, ctx.currentTime, smoothing || 0.001);
+}
+function release(seat, when) {
+  const fade = (TIMBRES[seat.instrument] || { release: 0.05 }).release;
+  for (const voice of seat.voices) {
+    voice.env.gain.setValueAtTime(voice.velocity, when);
+    voice.env.gain.linearRampToValueAtTime(0, when + fade);
+    voice.node.stop(when + fade + 0.02);
+  }
+  seat.voices = [];
+}
+function strike(seat, f, when, velocity, keep) {
+  const timbre = TIMBRES[seat.instrument];
+  const { buffer, rate } = sampleFor(seat.instrument, f);
+  const node = ctx.createBufferSource();
+  node.buffer = buffer;
+  node.playbackRate.value = rate;
+  const env = ctx.createGain();
+  env.gain.value = velocity;
+  node.connect(env); env.connect(bus(seat).input);
+  node.start(when);
+  if (timbre.ring) {
+    env.gain.setValueAtTime(velocity, when + timbre.ring);
+    env.gain.linearRampToValueAtTime(0, when + timbre.ring + timbre.release);
+    node.stop(when + timbre.ring + timbre.release + 0.02);
+  } else {
+    if (!keep) release(seat, when);
+    seat.voices.push({ node, env, velocity });
+  }
+}
+function hitDrum(seat, name, when, velocity) {
+  const node = ctx.createBufferSource(), env = ctx.createGain();
+  node.buffer = drumKit[name];
+  env.gain.value = velocity;
+  node.connect(env); env.connect(bus(seat).input);
+  node.start(when);
+}
+
+/* ---- what each part does with its variable at L2 ---------------------------------------- */
+function line(seat, v, step, when, h) {
+  const [low, high] = registerOf(seat);
+  const notes = notesIn(step % 4 === 0 ? h.chord : h.scale, low, high);
+  if (!notes.length) return;
+  let want = targetOf(seat, v);
+  if (seat.last) want = seat.last * 2 ** clamp(Math.log2(want / seat.last), -0.42, 0.42);
+  const f = nearest(notes, want);
+  if (f === seat.last) return; // a steady value rests, or holds
+  seat.last = f;
+  strike(seat, f, when, velocityOf(v));
+}
+const ROLES = {
+  melody(seat, v, step, when, dur, h) { line(seat, v, step, when, h); },
+  half(seat, v, step, when, dur, h) { if (step % 2 === 0) line(seat, v, step, when, h); },
+  long(seat, v, step, when, dur, h) {
+    if (step % 8) return;
+    const mean = meanValue(seat, step, 8) ?? v;
+    const [low, high] = registerOf(seat);
+    const notes = notesIn(h.chord, low, high);
+    if (notes.length) strike(seat, nearest(notes, targetOf(seat, mean)), when, velocityOf(mean));
+  },
+  chords(seat, v, step, when, dur, h) {
+    if (step % 4) return;
+    const [low, high] = registerOf(seat);
+    const notes = notesIn(h.chord, low, high);
+    const at = notes.indexOf(nearest(notes, targetOf(seat, v)));
+    release(seat, when);
+    notes.slice(Math.max(at - 1, 0), at + 2).forEach((f) => strike(seat, f, when, 0.75 * velocityOf(v), true));
+  },
+  bass(seat, v, step, when, dur, h) {
+    const pattern = v > 0.66 ? [0, 1, 2, 3, 4, 5, 6, 7] : v > 0.33 ? [0, 3, 4, 6] : [0, 4];
+    const beat = step % 8;
+    if (!pattern.includes(beat)) return;
+    const [low, high] = registerOf(seat);
+    const notes = notesIn([beat === 6 ? h.fifth : h.root], low, high);
+    if (notes.length) strike(seat, notes[0], when, velocityOf(v));
+  },
+  arp(seat, v, step, when, dur, h) {
+    if (hashed(step, seat.index) > 0.2 + 0.7 * v) return;
+    const [low, high] = registerOf(seat);
+    const notes = notesIn(h.chord, low, high);
+    if (!notes.length) return;
+    const at = notes.indexOf(nearest(notes, targetOf(seat, v)));
+    const walk = [0, 1, 2, 1][step % 4] - 1;
+    strike(seat, notes[clamp(at + walk, 0, notes.length - 1)], when, 0.8 * velocityOf(v));
+  },
+  hit(seat, v, step, when, dur, h) {
+    const rise = v - (seat.prev ?? v);
+    seat.prev = v;
+    if (rise < 0.1) return; // a stroke when the value jumps: for rain, a wet day
+    const [low, high] = registerOf(seat);
+    const notes = notesIn([h.root], low, high * 1.5);
+    const f = notes[0] || targetOf(seat, 0.5);
+    strike(seat, f, when, clamp(0.45 + rise, 0, 1));
+    if (rise > 0.5) strike(seat, f, when + dur / 2, 0.6);
+  },
+  power(seat, v, step, when, dur, h) {
+    const pattern = v > 0.5 ? [0, 2, 3, 5, 6] : [0, 3, 6];
+    if (!pattern.includes(step % 8)) return;
+    const [low, high] = registerOf(seat);
+    const roots = notesIn([h.root], low, high);
+    if (!roots.length) return;
+    const root = nearest(roots, targetOf(seat, 0.3));
+    strike(seat, root, when, velocityOf(v));
+    strike(seat, root * 1.5, when, 0.8 * velocityOf(v));
+  },
+  drums(seat, v, step, when, dur) {
+    const beat = step % 8;
+    if (step % 32 === 0) hitDrum(seat, "crash", when, 0.5 + 0.4 * v);
+    if ((v > 0.66 ? [0, 3, 4, 6] : v > 0.33 ? [0, 4, 5] : [0]).includes(beat)) hitDrum(seat, "kick", when, 0.7 + 0.3 * v);
+    if ((v > 0.33 ? [2, 6] : [4]).includes(beat)) hitDrum(seat, "snare", when, 0.55 + 0.4 * v);
+    if (v > 0.33 || beat % 2 === 0) hitDrum(seat, beat === 7 && v > 0.8 ? "open" : "hat", when, 0.35 + 0.3 * v);
+    const rain = data().sites[seat.site] && data().sites[seat.site].P_F[step % days()];
+    if (beat >= 6 && rain > 8) hitDrum(seat, "tom", when + dur / 2, 0.75); // a real downpour fills the bar
+  },
+};
+/* L0 and L1 are continuous */
+function waveOf(seat) {
+  const partials = TIMBRES[seat.instrument] ? TIMBRES[seat.instrument].partials : [[1, 1, 1]];
+  const size = 12, real = new Float32Array(size), imag = new Float32Array(size);
+  for (const [harmonic, weight] of partials) if (harmonic < size) imag[Math.round(harmonic)] = weight;
+  return ctx.createPeriodicWave(real, imag);
+}
+function rawWave(seat, day) {
+  const size = 64, x = new Float32Array(size);
+  let mean = 0, n = 0;
+  for (let i = 0; i < size; i++) {
+    const value = rawValue(seat, (day - i + days() * 2) % days());
+    x[i] = value === null ? NaN : value;
+    if (value !== null) { mean += value; n++; }
+  }
+  mean = n ? mean / n : 0;
+  const harmonics = 24, real = new Float32Array(harmonics), imag = new Float32Array(harmonics);
+  for (let k = 1; k < harmonics; k++) {
+    for (let i = 0; i < size; i++) {
+      const y = Number.isFinite(x[i]) ? x[i] - mean : 0, angle = 2 * Math.PI * k * i / size;
+      real[k] += y * Math.cos(angle);
+      imag[k] += y * Math.sin(angle);
+    }
+  }
+  return ctx.createPeriodicWave(real, imag);
+}
+function stopDrone(seat, when) {
+  if (!seat.drone) return;
+  seat.drone.gain.gain.setTargetAtTime(0, when, 0.05);
+  seat.drone.osc.stop(when + 0.4);
+  seat.drone = null;
+}
+function continuous(seat, v, day, when, dur) {
+  release(seat, when);
+  if (!seat.drone) {
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    gain.gain.value = 0;
+    osc.setPeriodicWave(waveOf(seat));
+    osc.frequency.value = targetOf(seat, v);
+    osc.connect(gain); gain.connect(bus(seat).input);
+    osc.start(when);
+    seat.drone = { osc, gain, level: seat.level };
+  }
+  const { osc, gain } = seat.drone;
+  if (seat.level === 1) {
+    osc.frequency.setTargetAtTime(targetOf(seat, v), when, dur * 0.7);
+    gain.gain.setTargetAtTime(0.1 + 0.26 * v, when, dur * 0.7);
+  } else {
+    osc.frequency.setTargetAtTime(registerOf(seat)[0], when, 0.02);
+    if (day % 4 === 0 || seat.drone.level !== 0) { osc.setPeriodicWave(rawWave(seat, day)); seat.drone.level = 0; }
+    gain.gain.setTargetAtTime(0.26, when, 0.05);
+  }
+}
+function playStep(step, when, dur) {
+  const h = harmonyAt(step), day = step % days();
+  for (const seat of state.seats) {
+    const v = valueOf(seat, day);
+    if (v === null) { stopDrone(seat, when); release(seat, when); seat.last = null; continue; } // no data: silence
+    if (seat.level === 2 || seat.role === "drums") {
+      stopDrone(seat, when);
+      ROLES[seat.role](seat, v, step, when, dur, h);
+    } else {
+      continuous(seat, v, day, when, dur);
+    }
+  }
+}
+
+/* ---- transport ------------------------------------------------------------------------- */
+let timer = 0, nextTime = 0, nextStep = 0, anchorTime = 0, anchorStep = 0, playing = false;
+const stepSeconds = () => 30 / state.bpm; // one eighth note per day
+function tick() {
+  while (playing && nextTime < ctx.currentTime + 0.14) {
+    if (nextStep >= days()) { stop(true); return; }
+    playStep(nextStep, nextTime, stepSeconds());
+    nextStep++;
+    nextTime += stepSeconds();
+    anchorTime = nextTime; anchorStep = nextStep;
+  }
+}
+async function prepare() {
+  if (!drumKit.kick) buildDrums();
+  const needed = [];
+  for (const seat of state.seats) {
+    if (!TIMBRES[seat.instrument]) continue;
+    const [low, high] = registerOf(seat);
+    for (const f of [low, seat.centre, high]) {
+      const ref = referenceOf(clamp(f, low, high));
+      if (!samples.has(seat.instrument + "@" + ref) && !needed.some((n) => n[0] === seat.instrument && n[1] === ref)) needed.push([seat.instrument, ref]);
+    }
+  }
+  const button = $("play");
+  for (let k = 0; k < needed.length; k++) {
+    button.textContent = "Tuning " + Math.round(100 * k / needed.length) + "%";
+    samples.set(needed[k][0] + "@" + needed[k][1], renderNote(needed[k][0], needed[k][1]));
+    if (k % 3 === 2) await new Promise((resolve) => setTimeout(resolve));
+  }
+  button.textContent = playing ? "Pause" : "Play";
+}
+async function start() {
+  if (playing) return;
+  ctx = ctx || new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE, latencyHint: "playback" });
+  await ctx.resume();
+  if (!mixBus) { const graph = buildGraph(ctx); mixBus = graph.mix; reverb = graph.room; }
+  await prepare();
+  state.seats.forEach((seat) => { seat.last = null; seat.prev = null; });
+  playing = true;
+  $("play").textContent = "Pause";
+  nextStep = state.step >= days() - 1 ? 0 : state.step;
+  nextTime = ctx.currentTime + 0.1;
+  anchorTime = nextTime; anchorStep = nextStep;
+  timer = setInterval(tick, 25);
+  tick();
+}
+function stop(rewind) {
+  clearInterval(timer);
+  if (ctx) for (const seat of state.seats) { release(seat, ctx.currentTime); stopDrone(seat, ctx.currentTime); }
+  playing = false;
+  $("play").textContent = "Play";
+  if (rewind) state.step = 0;
+  paintClock();
+}
+function seek(step) {
+  state.step = clamp(Math.round(step), 0, days() - 1);
+  if (playing) {
+    for (const seat of state.seats) { release(seat, ctx.currentTime); seat.last = null; }
+    nextStep = state.step;
+    nextTime = ctx.currentTime + 0.06;
+    anchorTime = nextTime; anchorStep = nextStep;
+  }
+  paintClock();
+}
+function dateOf(step) {
+  const d = new Date(Date.UTC(state.year, 0, 1 + step));
+  return d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
+}
+function trackBox() {
+  const first = state.seats.length && state.seats[0].track;
+  if (!first) return null;
+  const box = first.getBoundingClientRect(), host = $("score").getBoundingClientRect();
+  return { left: box.left - host.left, width: box.width };
+}
+function paintClock() {
+  $("today").textContent = dateOf(state.step) + " " + state.year;
+  const box = trackBox();
+  if (box) $("playhead").style.left = box.left + state.step / Math.max(days() - 1, 1) * box.width + "px";
+}
+function frame() {
+  if (playing && ctx) {
+    const position = anchorStep - (anchorTime - ctx.currentTime) / stepSeconds();
+    state.step = Math.floor(clamp(position, 0, days() - 1));
+    paintClock();
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---- the score: one row per player, on one time axis ------------------------------------ */
+function option(parent, value, label) {
+  const node = html("option", "", parent, label);
+  node.value = value;
+  return node;
+}
+function group(parent, label) {
+  const node = html("optgroup", "", parent);
+  node.label = label;
+  return node;
+}
+function drawTrack(seat) {
+  const canvas = seat.track, ratio = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth, height = canvas.clientHeight;
+  if (!width) return;
+  canvas.width = width * ratio; canvas.height = height * ratio;
+  const g = canvas.getContext("2d");
+  g.setTransform(ratio, 0, 0, ratio, 0, 0);
+  g.clearRect(0, 0, width, height);
+  g.strokeStyle = token(siteToken(seat.site));
+  g.lineWidth = 1.5; g.lineJoin = "round"; g.lineCap = "round";
+  g.beginPath();
+  let pen = false;
+  for (let d = 0; d < days(); d++) {
+    const v = valueOf(seat, d);
+    if (v === null) { pen = false; continue; }
+    const x = d / (days() - 1) * width, y = 3 + (1 - v) * (height - 6);
+    if (pen) g.lineTo(x, y); else g.moveTo(x, y);
+    pen = true;
+  }
+  g.stroke();
+}
+function paintRow(seat) {
+  seat.dot.style.background = "var(" + siteToken(seat.site) + ")";
+  seat.who.textContent = seat.site + " " + VARS[seat.variable].short;
+  seat.label.textContent = seat.name;
+  seat.label.title = seat.instrument.replace("_", " ");
+  seat.row.classList.toggle("selected", seat.index === state.selected);
+  seat.row.classList.toggle("silent", isSilent(seat) || !data().sites[seat.site]);
+  seat.mutes.setAttribute("aria-pressed", seat.mute);
+  seat.solos.setAttribute("aria-pressed", seat.solo);
+  seat.levels.forEach((b, k) => {
+    b.setAttribute("aria-pressed", k === (seat.role === "drums" ? 2 : seat.level));
+    b.disabled = seat.role === "drums" && k !== 2;
+  });
+  const dot = seat.plan;
+  if (dot) {
+    dot.querySelector("circle").style.fill = "var(" + siteToken(seat.site) + ")";
+    dot.classList.toggle("selected", seat.index === state.selected);
+    dot.classList.toggle("silent", isSilent(seat));
+  }
+}
+const paintAll = () => { state.seats.forEach(paintRow); };
+const drawAll = () => { state.seats.forEach(drawTrack); paintClock(); };
+function drawScore() {
+  const rows = $("rows");
+  rows.textContent = "";
+  for (const section of ENSEMBLES[state.ensemble].sections) {
+    const head = html("div", "section", rows);
+    html("b", "", head, section.label);
+    html("span", "family", head, (FAMILIES[section.family] || {}).label || "");
+    const fader = html("input", "", head);
+    fader.type = "range"; fader.min = 0; fader.max = 1.5; fader.step = 0.01;
+    fader.value = state.sections[section.id] ?? 1;
+    fader.setAttribute("aria-label", section.label + " volume");
+    fader.addEventListener("input", () => {
+      state.sections[section.id] = Number(fader.value);
+      state.seats.filter((s) => s.section === section.id).forEach((s) => applyLevel(s));
+    });
+    for (const seat of state.seats.filter((s) => s.section === section.id)) {
+      const row = html("div", "row", rows);
+      row.tabIndex = 0;
+      row.setAttribute("role", "button");
+      row.setAttribute("aria-label", "Edit " + seat.name);
+      seat.row = row;
+      seat.label = html("span", "name", row);
+      const who = html("span", "who", row);
+      seat.dot = html("i", "", who);
+      seat.who = html("span", "", who);
+      seat.track = html("canvas", "track", row);
+      const levels = html("div", "seg small levels", row);
+      seat.levels = [0, 1, 2].map((k) => {
+        const b = html("button", "", levels, "L" + k);
+        b.type = "button";
+        b.title = ["The data as a waveform", "A tone gliding with the data", "Notes on the harmony"][k];
+        b.addEventListener("click", (e) => { e.stopPropagation(); seat.level = k; paintRow(seat); });
+        return b;
+      });
+      const volume = html("input", "volume", row);
+      volume.type = "range"; volume.min = 0; volume.max = 1.5; volume.step = 0.01; volume.value = seat.volume;
+      volume.setAttribute("aria-label", seat.name + " volume");
+      volume.addEventListener("click", (e) => e.stopPropagation());
+      volume.addEventListener("input", () => { seat.volume = Number(volume.value); applyLevel(seat); });
+      const ms = html("div", "ms", row);
+      seat.mutes = html("button", "quiet", ms, "M");
+      seat.solos = html("button", "quiet", ms, "S");
+      seat.mutes.type = "button"; seat.solos.type = "button";
+      seat.mutes.title = "Mute"; seat.solos.title = "Solo";
+      seat.mutes.addEventListener("click", (e) => { e.stopPropagation(); seat.mute = !seat.mute; state.seats.forEach((s) => applyLevel(s)); paintAll(); });
+      seat.solos.addEventListener("click", (e) => { e.stopPropagation(); seat.solo = !seat.solo; state.seats.forEach((s) => applyLevel(s)); paintAll(); });
+      row.addEventListener("click", () => select(seat.index));
+      row.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target === row) select(seat.index); });
+      seat.track.addEventListener("click", (e) => { e.stopPropagation(); seek(trackStep(e)); });
+      seat.track.addEventListener("pointermove", (e) => hover(seat, e));
+      seat.track.addEventListener("pointerleave", () => { $("tip").hidden = true; });
+    }
+  }
+  const axis = $("months");
+  axis.textContent = "";
+  MONTHS.forEach((month, k) => {
+    const label = html("span", "", axis, month);
+    label.style.left = ((Date.UTC(state.year, k, 15) - Date.UTC(state.year, 0, 1)) / 864e5 / days()) * 100 + "%";
+  });
+  paintAll(); drawAll();
+}
+function trackStep(event) {
+  const box = event.target.getBoundingClientRect();
+  return clamp((event.clientX - box.left) / box.width, 0, 1) * (days() - 1);
+}
+function hover(seat, event) {
+  const step = Math.round(trackStep(event)), x = rawValue(seat, step), tip = $("tip");
+  tip.hidden = false;
+  tip.querySelector("strong").textContent = x === null ? "no data" : x.toFixed(2) + " " + VARS[seat.variable].unit;
+  tip.querySelector("span").textContent = dateOf(step) + ", " + VARS[seat.variable].label;
+  const host = $("score").getBoundingClientRect(), box = event.target.getBoundingClientRect();
+  const at = event.clientX - host.left, right = at > host.width - 240;
+  tip.style.top = box.bottom - host.top + 2 + "px";
+  tip.style.left = right ? "auto" : at + 8 + "px";
+  tip.style.right = right ? host.width - at + 8 + "px" : "auto";
+}
+/* One editor, placed under the row being edited. */
+const editor = html("div", "editor");
+function field(label, id) {
+  const wrap = html("label", "", editor);
+  html("span", "label", wrap, label);
+  const list = html("select", "", wrap);
+  list.id = id;
+  return list;
+}
+const pickInstrument = field("Instrument", "p-instrument");
+const pickSite = field("Site", "p-site");
+const pickVariable = field("Plays", "p-variable");
+const give = html("div", "give", editor);
+html("span", "label", give, "Give to");
+const giveSection = html("button", "quiet", give, "Section");
+const giveAll = html("button", "quiet", give, "Everyone");
+giveSection.type = "button"; giveAll.type = "button";
+const editorNote = html("p", "note", editor);
+function select(index) {
+  if (state.selected === index) { state.selected = -1; editor.remove(); paintAll(); requestAnimationFrame(paintClock); return; }
+  state.selected = index;
+  const seat = state.seats[index];
+  seat.row.after(editor);
+  pickInstrument.textContent = "";
+  if (seat.role === "drums") {
+    option(pickInstrument, "drums", "Drum kit");
+  } else {
+    const held = group(pickInstrument, "Held"), struck = group(pickInstrument, "Struck and plucked");
+    Object.keys(TIMBRES).sort().forEach((name) => option(TIMBRES[name].ring ? struck : held, name, name.replace("_", " ")));
+  }
+  pickInstrument.value = seat.instrument;
+  pickSite.textContent = "";
+  const onStage = group(pickSite, "Chosen sites");
+  state.sites.forEach((id) => option(onStage, id, id + " " + META.sites[id].name));
+  const others = group(pickSite, "Other sites this year");
+  Object.keys(data().sites).filter((id) => !state.sites.includes(id)).sort().forEach((id) => option(others, id, id + " " + META.sites[id].name));
+  pickSite.value = seat.site;
+  pickVariable.textContent = "";
+  for (const key in FAMILIES) {
+    const family = group(pickVariable, FAMILIES[key].label);
+    FAMILIES[key].vars.forEach((id) => option(family, id, VARS[id].label));
+  }
+  pickVariable.value = seat.variable;
+  editorNote.textContent = seat.role === "drums" ? "The kit plays harder as the value rises, and a real downpour adds a fill."
+    : seat.role === "hit" ? "One stroke each time the value jumps up. For rain, that is a wet day."
+    : "Higher values play higher.";
+  paintAll();
+  requestAnimationFrame(paintClock);
+}
+
+/* ---- sites and seating ------------------------------------------------------------------ */
+function drawChips() {
+  const host = $("chips");
+  host.textContent = "";
+  state.sites.forEach((id) => {
+    const chip = html("button", "chip", host);
+    chip.type = "button";
+    chip.title = "Remove " + META.sites[id].name;
+    html("i", "", chip).style.background = "var(" + siteToken(id) + ")";
+    chip.appendChild(document.createTextNode(id));
+    html("span", "", chip, "×");
+    chip.addEventListener("click", () => toggleSite(id));
+  });
+}
+function project(site) {
+  return [(site.lon - LAND.W) * LAND.k / LAND.span * LAND.width, (LAND.N - site.lat) / LAND.tall * LAND.height];
+}
+function drawMap() {
+  const map = $("map");
+  map.textContent = "";
+  map.setAttribute("viewBox", "0 0 " + LAND.width + " " + LAND.height);
+  svg("path", { d: LAND.path }, map);
+  Object.keys(data().sites).forEach((id) => {
+    const site = META.sites[id], [x, y] = project(site);
+    if (x < 0 || x > LAND.width || y < 0 || y > LAND.height) return;
+    const picked = state.sites.includes(id);
+    const dot = svg("circle", { class: "dot" + (picked ? " picked" : ""), cx: x, cy: y, r: picked ? 6 : 3.4, tabindex: 0, role: "button", "aria-label": id + " " + site.name }, map);
+    if (picked) dot.style.fill = "var(" + siteToken(id) + ")";
+    const describe = () => { $("map-tip").textContent = id + " " + site.name + ", " + site.eco; };
+    dot.addEventListener("pointerenter", describe);
+    dot.addEventListener("focus", describe);
+    dot.addEventListener("click", () => toggleSite(id));
+    dot.addEventListener("keydown", (event) => { if (event.key === "Enter") toggleSite(id); });
+  });
+}
+function fillSitePicker() {
+  const list = $("add-site");
+  list.textContent = "";
+  option(list, "", "Choose a site");
+  for (const [label, pattern] of ECO_GROUPS) {
+    const ids = Object.keys(data().sites).filter((id) => pattern.test(META.sites[id].eco)).sort((a, b) => META.sites[b].lat - META.sites[a].lat);
+    if (!ids.length) continue;
+    const g = group(list, label);
+    ids.forEach((id) => option(g, id, id + " " + META.sites[id].name));
+  }
+}
+function drawPlan() {
+  const plan = $("seating");
+  plan.textContent = "";
+  state.seats.forEach((seat) => {
+    const g = svg("g", { class: "seat", transform: "translate(" + (seat.x * 0.3) + " " + (seat.y * 0.29) + ")", tabindex: 0, role: "button", "aria-label": seat.name }, plan);
+    svg("circle", { r: 9 }, g);
+    svg("text", { y: 19 }, g).textContent = seat.abbr;
+    seat.plan = g;
+    g.addEventListener("click", () => select(seat.index));
+    g.addEventListener("keydown", (e) => { if (e.key === "Enter") select(seat.index); });
+  });
+  svg("path", { d: "M150 186 l-6 9 h12 z", fill: "var(--ink-3)" }, plan);
+}
+function setSites(ids) {
+  state.sites = ids.filter((id) => data().sites[id]).slice(0, 4);
+  if (!state.sites.length) state.sites = [Object.keys(data().sites)[0]];
+  if (playing) for (const seat of state.seats) seat.last = null;
+  reseat(); drawChips(); drawMap(); paintAll(); drawAll();
+  if (state.selected >= 0) { const k = state.selected; state.selected = -1; select(k); }
+}
+function toggleSite(id) {
+  if (state.sites.includes(id)) {
+    if (state.sites.length > 1) setSites(state.sites.filter((s) => s !== id));
+    return;
+  }
+  if (state.sites.length >= 4) { $("map-tip").textContent = "Four sites at most: remove one first."; return; }
+  setSites(state.sites.concat(id));
+}
+function setEnsemble(name) {
+  const wasPlaying = playing;
+  if (wasPlaying) stop(false);
+  state.ensemble = name;
+  state.seats = seatsFor(name);
+  state.selected = -1;
+  editor.remove();
+  state.bpm = ENSEMBLES[name].bpm;
+  state.sections = {};
+  $("tempo").value = state.bpm; $("tempo-value").textContent = state.bpm;
+  document.querySelectorAll("#ensembles button").forEach((t) => t.setAttribute("aria-pressed", t.dataset.name === name));
+  reseat(); drawPlan(); drawScore();
+  if (wasPlaying) start();
+}
+
+/* ---- a composition is a link -------------------------------------------------------------- */
+function composition() {
+  return {
+    e: state.ensemble, y: state.year, h: state.harmony, b: state.bpm, s: state.sites, f: state.sections,
+    p: state.seats.map((seat) => [seat.instrument, seat.site, seat.variable, seat.level,
+      Math.round(seat.volume * 100), seat.mute ? 1 : 0, seat.solo ? 1 : 0]),
+  };
+}
+const toHash = (value) => btoa(unescape(encodeURIComponent(JSON.stringify(value)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const fromHash = (text) => JSON.parse(decodeURIComponent(escape(atob(text.replace(/-/g, "+").replace(/_/g, "/")))));
+async function setYear(year) {
+  await loadYear(year);
+  state.year = year;
+  $("year").value = year;
+  state.step = Math.min(state.step, days() - 1);
+  fillSitePicker();
+}
+async function perform(piece) {
+  const wasPlaying = playing;
+  if (wasPlaying) stop(false);
+  await setYear(piece.y);
+  state.sites = piece.s.filter((id) => data().sites[id]).slice(0, 4);
+  state.harmony = piece.h;
+  $("harmony").value = piece.h;
+  setEnsemble(piece.e);
+  if (piece.b) { state.bpm = piece.b; $("tempo").value = piece.b; $("tempo-value").textContent = piece.b; }
+  state.sections = piece.f || {};
+  (piece.p || []).forEach((p, k) => {
+    const seat = state.seats[k];
+    if (!seat || !data().sites[p[1]] || !VARS[p[2]]) return;
+    if (seat.role !== "drums" && TIMBRES[p[0]]) seat.instrument = p[0];
+    seat.site = p[1]; seat.variable = p[2]; seat.level = p[3]; seat.volume = p[4] / 100; seat.mute = !!p[5]; seat.solo = !!p[6];
+  });
+  ranges.clear();
+  drawChips(); drawMap(); drawScore();
+  if (wasPlaying) start();
+}
+
+/* ---- wiring ----------------------------------------------------------------------------- */
+function wire() {
+  for (const name in ENSEMBLES) {
+    const tab = html("button", "", $("ensembles"), ENSEMBLES[name].label);
+    tab.type = "button"; tab.dataset.name = name;
+    tab.addEventListener("click", () => setEnsemble(name));
+  }
+  META.years.forEach((year) => option($("year"), year, year));
+  PRESETS.forEach((preset) => {
+    const button = html("button", "quiet", $("presets"), preset.label);
+    button.type = "button";
+    button.addEventListener("click", () => setSites(preset.sites));
+  });
+  option($("piece"), "", "Choose a piece");
+  PIECES.forEach((piece, k) => option($("piece"), k, piece.label));
+  $("piece").addEventListener("change", async (e) => {
+    const piece = PIECES[Number(e.target.value)];
+    if (!piece) return;
+    await perform({ e: piece.ensemble, y: piece.year, h: piece.harmony, s: piece.sites });
+  });
+  $("share").addEventListener("click", async (e) => {
+    const link = location.href.split("#")[0] + "#" + toHash(composition());
+    try {
+      await navigator.clipboard.writeText(link);
+      e.target.textContent = "Copied";
+    } catch (error) {
+      location.hash = toHash(composition()); // the address bar now holds the link
+      e.target.textContent = "Link in address bar";
+    }
+    setTimeout(() => { e.target.textContent = "Copy link"; }, 1800);
+  });
+  $("toggle-picker").addEventListener("click", (e) => {
+    const open = $("picker").hidden;
+    $("picker").hidden = !open;
+    e.target.setAttribute("aria-expanded", open);
+    if (open) drawMap();
+  });
+  $("play").addEventListener("click", () => { if (playing) stop(false); else start(); });
+  document.addEventListener("keydown", (event) => {
+    if (event.code === "Space" && !/INPUT|SELECT|BUTTON/.test(event.target.tagName) && event.target.getAttribute("role") !== "button") {
+      event.preventDefault();
+      if (playing) stop(false); else start();
+    }
+  });
+  $("harmony").addEventListener("change", (e) => { state.harmony = e.target.value; });
+  $("tempo").addEventListener("input", (e) => { state.bpm = Number(e.target.value); $("tempo-value").textContent = state.bpm; });
+  $("year").addEventListener("change", async (e) => {
+    const year = Number(e.target.value), wasPlaying = playing;
+    if (wasPlaying) stop(false);
+    try {
+      await loadYear(year);
+    } catch (error) {
+      $("map-tip").textContent = "That year did not load. Reload the page and try again.";
+      e.target.value = state.year;
+      return;
+    }
+    state.year = year;
+    state.step = Math.min(state.step, days() - 1);
+    setSites(state.sites); fillSitePicker();
+    if (wasPlaying) start();
+  });
+  $("add-site").addEventListener("change", (e) => { if (e.target.value) toggleSite(e.target.value); e.target.value = ""; });
+  const seat = () => state.seats[state.selected];
+  const changed = () => { ranges.clear(); paintAll(); drawAll(); };
+  pickInstrument.addEventListener("change", async (e) => {
+    if (seat().role === "drums") return;
+    seat().instrument = e.target.value; seat().last = null;
+    if (playing) await prepare();
+    paintAll();
+  });
+  pickSite.addEventListener("change", (e) => { seat().site = e.target.value; changed(); });
+  pickVariable.addEventListener("change", (e) => { seat().variable = e.target.value; changed(); });
+  const hand = (seats) => { seats.filter((s) => s.role !== "drums").forEach((s) => { s.variable = seat().variable; }); changed(); };
+  giveSection.addEventListener("click", () => hand(state.seats.filter((s) => s.section === seat().section)));
+  giveAll.addEventListener("click", () => hand(state.seats));
+  new ResizeObserver(drawAll).observe($("score"));
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { paintAll(); drawAll(); });
+}
+
+/* A test hook: renders the current programme without speakers and reports what came out. */
+async function renderOffline(seconds, from = 150) {
+  const saved = [ctx, mixBus, reverb];
+  const context = new OfflineAudioContext(2, Math.floor(seconds * SAMPLE_RATE), SAMPLE_RATE);
+  ctx = context;
+  const graph = buildGraph(context);
+  mixBus = graph.mix; reverb = graph.room;
+  if (!drumKit.kick) buildDrums();
+  state.seats.forEach((seat) => { seat.bus = null; seat.voices = []; seat.drone = null; seat.last = null; seat.prev = null; });
+  const dur = stepSeconds();
+  let steps = 0, step = from;
+  for (let when = 0.02; when < seconds - 0.1; when += dur) {
+    playStep(step % days(), when, dur);
+    step++; steps++;
+  }
+  const rendered = await context.startRendering();
+  state.seats.forEach((seat) => { seat.bus = null; seat.voices = []; seat.drone = null; seat.last = null; });
+  [ctx, mixBus, reverb] = saved;
+  const left = rendered.getChannelData(0), right = rendered.getChannelData(1);
+  let peak = 0, sum = 0, nan = 0;
+  for (let i = 0; i < left.length; i++) {
+    const a = left[i], b = right[i];
+    if (!Number.isFinite(a) || !Number.isFinite(b)) { nan++; continue; }
+    peak = Math.max(peak, Math.abs(a), Math.abs(b));
+    sum += a * a + b * b;
+  }
+  return { steps, peakDb: 20 * Math.log10(peak + 1e-9), rmsDb: 10 * Math.log10(sum / (2 * left.length) + 1e-12), nan };
+}
+
+function boot() {
+  years[state.year] = decode(read("first-year"));
+  wire();
+  state.sites = state.sites.filter((id) => data().sites[id]);
+  $("harmony").value = state.harmony;
+  drawChips(); fillSitePicker();
+  setEnsemble("orchestra");
+  requestAnimationFrame(frame);
+  window.ensemble = { state, renderOffline, setEnsemble, setSites, composition, perform };
+  if (location.hash.length > 8) {
+    try { perform(fromHash(location.hash.slice(1))); } catch (error) { /* not a composition */ }
+  }
+}
+boot();
+})();
+</script>

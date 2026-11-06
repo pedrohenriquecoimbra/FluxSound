@@ -1,0 +1,632 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FR-Gri by Scale</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+@@BASE_CSS@@
+.lead { max-width: 72ch; color: var(--ink-2); font-size: 0.9rem; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; position: relative; }
+.head, .scale {
+  display: grid; grid-template-columns: 1.6rem 6.6rem minmax(0, 1fr) 5rem 4.6rem;
+  align-items: center; gap: 0.6rem; padding-inline: 0.7rem;
+}
+.head { height: 1.7rem; font: 500 0.7rem/1 var(--sans); color: var(--ink-3); background: var(--bg); }
+.head .axis { position: relative; height: 100%; font: 400 0.68rem/1 var(--mono); }
+.head .axis span { position: absolute; top: 0.5rem; transform: translateX(-50%); white-space: nowrap; }
+.head .axis span:first-child { transform: none; }
+.head .axis span:last-child { transform: translateX(-100%); }
+.scale { min-height: 1.75rem; border-top: 1px solid var(--line); }
+.scale.off .period, .scale.off .strip, .scale.off .share, .scale.off .heard { opacity: 0.32; }
+.scale input { width: 0.95rem; height: 0.95rem; margin: 0; accent-color: var(--ink); cursor: pointer; }
+.period { font: 400 0.74rem/1.2 var(--mono); color: var(--ink-2); white-space: nowrap; }
+.strip { display: block; width: 100%; height: 1.45rem; min-width: 0; border-radius: 2px; cursor: pointer; }
+.share { display: flex; align-items: center; gap: 0.3rem; font: 400 0.72rem/1 var(--mono); color: var(--ink-2); }
+.share i { display: block; height: 0.5rem; background: var(--ink-3); border-radius: 1px; }
+.share b { font-weight: 400; margin-left: auto; }
+.heard { font: 400 0.72rem/1 var(--mono); color: var(--ink-3); text-align: right; white-space: nowrap; }
+.extra .strip-note { font-size: 0.76rem; color: var(--ink-3); }
+.sets { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; padding: 0.5rem 0.7rem; border-top: 1px solid var(--line); }
+.legend { display: inline-flex; align-items: center; gap: 0.3rem; margin-left: auto; font-size: 0.74rem; color: var(--ink-3); }
+.legend i { width: 2.6rem; height: 0.55rem; border-radius: 2px; background: linear-gradient(90deg, var(--down), var(--mid), var(--up)); }
+#heard { position: absolute; z-index: 1; overflow: hidden; border-radius: 2px; background: var(--mid); }
+#heard canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
+#heard-axis span {
+  position: absolute; left: 0.3rem; transform: translateY(-50%); pointer-events: none;
+  font: 400 0.64rem/1 var(--mono); color: var(--ink); text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface);
+}
+.view-heard .strip { visibility: hidden; }
+#playhead { position: absolute; top: 0; width: 1px; background: var(--ink); pointer-events: none; z-index: 2; }
+.chart-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.2rem 1rem; padding: 0.6rem 0.7rem 0; }
+.chart-head h2, h2.section { font: 600 0.9rem/1.3 var(--sans); }
+.keyline { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.74rem; color: var(--ink-3); margin-left: 0.7rem; }
+.keyline i { width: 1rem; height: 2px; }
+.chart-wrap { position: relative; padding: 0.2rem 0.7rem 0.5rem; }
+canvas.chart { display: block; width: 100%; height: 9.5rem; cursor: pointer; }
+#day-chart { height: 8rem; }
+.day { display: grid; gap: 0.5rem; }
+.day-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; padding: 0.6rem 0.7rem 0; }
+.wide { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font: 400 0.74rem/1.3 var(--mono); font-variant-numeric: tabular-nums; }
+th, td { padding: 0.24rem 0.5rem; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+th:first-child { text-align: left; padding-left: 0.7rem; font: 500 0.72rem/1.3 var(--sans); color: var(--ink-3); }
+th { font-weight: 500; color: var(--ink-3); }
+td { color: var(--ink-2); }
+.locked { color: var(--ink); font-weight: 500; }
+@media (max-width: 44rem) {
+  .head, .scale { grid-template-columns: 1.4rem 5.4rem minmax(0, 1fr) 3.2rem; gap: 0.4rem; padding-inline: 0.5rem; }
+  .heard, .head .h-heard { display: none; }
+  .share i { display: none; }
+}
+</style>
+
+<div class="page">
+  <header class="top">
+    <h1 class="brand">FR-Gri by Scale</h1>
+    <div class="seg" id="signals" role="group" aria-label="Signal"></div>
+    <div class="seg" id="levels" role="group" aria-label="Level"></div>
+    <div class="seg" id="views" role="group" aria-label="What the rows show"></div>
+    <div class="grow"></div>
+    <span class="mono" id="clock">00:00 of 30 min</span>
+    <button class="primary" id="play" type="button">Play</button>
+  </header>
+
+  <p class="lead">Half an hour of 20 Hz data from the FR-Gri tower, split into wavelet scales with waveletec. Turn scales on and off: the picture, the chart and the sound follow. L0 is the waveform itself, L1 the same scales moved into hearing range, L2 the music. Heard frequency shows where each level puts the sound; Period shows the scales themselves.</p>
+
+  <section class="panel" id="scales-panel" aria-label="Wavelet scales">
+    <div class="head">
+      <span></span><span>Period</span><div class="axis" id="time-axis"></div><span>Share</span><span class="h-heard" style="text-align:right">Heard at</span>
+    </div>
+    <div id="scales"></div>
+    <div class="sets">
+      <button class="quiet" type="button" data-set="all">All</button>
+      <button class="quiet" type="button" data-set="large">Large eddies, over 10 s</button>
+      <button class="quiet" type="button" data-set="small">Small eddies, under 10 s</button>
+      <button class="quiet" type="button" data-set="none">None</button>
+      <span class="legend"><span id="legend-low">below zero</span><i id="legend-bar"></i><span id="legend-high">above zero</span></span>
+    </div>
+    <div id="heard" hidden>
+      <canvas id="heard-canvas" role="img" aria-label="Spectrogram of the chosen scales at this level, from 20 Hz to 16 kHz"></canvas>
+      <div id="heard-axis"></div>
+    </div>
+    <div id="playhead"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="sum-title">
+    <div class="chart-head">
+      <h2 id="sum-title">What the chosen scales add up to</h2>
+      <div><span class="keyline"><i style="background:var(--line-strong)"></i>Signal</span><span class="keyline"><i style="background:var(--ink)"></i>Chosen scales</span></div>
+    </div>
+    <div class="chart-wrap">
+      <canvas class="chart" id="sum" role="img" aria-label="The signal and the sum of the chosen scales over half an hour"></canvas>
+      <div class="tip" id="sum-tip" hidden><strong></strong><span></span></div>
+    </div>
+  </section>
+
+  <section class="panel day" aria-labelledby="day-title">
+    <div class="day-bar">
+      <button class="primary" id="day-play" type="button">Play</button>
+      <div class="grow">
+        <h2 class="section" id="day-title">A whole day of w × CO₂ at L2</h2>
+        <p class="hint">Local correlation between wind and CO₂ over 30-minute windows. Inside the band it is too weak to pull the instruments together. From mid-morning they lock into consonant, opposite motion over a minor bass.</p>
+      </div>
+      <span class="mono" id="day-clock">00:30</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas class="chart" id="day-chart" role="img" aria-label="Local correlation between vertical wind and CO2 through the day, in 30-minute windows, weak at night and strongly negative from mid-morning to late afternoon"></canvas>
+      <div class="tip" id="day-tip" hidden><strong></strong><span></span></div>
+    </div>
+    <div class="wide">
+      <table>@@DAY_TABLE@@</table>
+    </div>
+  </section>
+
+  <p class="credits">Sample: FR-Gri, 13 May 2022, from the ICOS Carbon Portal, CC BY 4.0. Decomposition: db6 discrete wavelet transform from waveletec. Scales are drawn each on their own scale so that fine eddies stay visible; Share gives their real weight. For a flux, the rows show the cross-scalogram, and L0 and L1 treat the flux density as a signal of its own. Every stem comes from fluxsound and all stems sum to the mix. Nobody has listened to these yet.</p>
+</div>
+
+<script type="application/json" id="model">@@MODEL@@</script>
+<script type="application/json" id="day-data">@@DAY@@</script>
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const MODEL = JSON.parse($("model").textContent), DAY = JSON.parse($("day-data").textContent);
+const html = (tag, className, parent, text) => {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  if (parent) parent.appendChild(node);
+  return node;
+};
+const clamp = (x, a, b) => Math.min(Math.max(x, a), b);
+const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const bytesOf = (text) => Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
+const floats = (text) => new Float32Array(bytesOf(text).buffer);
+const signedBytes = (text) => new Int8Array(bytesOf(text).buffer);
+
+for (const signal of MODEL.signals) {
+  signal.signalLine = floats(signal.signal);
+  signal.trendLine = floats(signal.trend);
+  for (const row of signal.rows) { row.values = signedBytes(row.strip); row.means = floats(row.mean); row.on = true; }
+}
+const state = { signal: 0, level: 1, trend: true, extras: {}, view: "heard" };
+const signal = () => MODEL.signals[state.signal];
+
+/* ---- rows ------------------------------------------------------------------------------- */
+function hexToRgb(hex) {
+  const value = hex.replace("#", "");
+  return [0, 2, 4].map((k) => parseInt(value.slice(k, k + 2), 16));
+}
+function paintStrip(canvas, values) {
+  const width = values.length, g = canvas.getContext("2d");
+  canvas.width = width; canvas.height = 1;
+  const image = g.createImageData(width, 1);
+  const down = hexToRgb(token("--down")), up = hexToRgb(token("--up")), mid = hexToRgb(token("--mid"));
+  for (let i = 0; i < width; i++) {
+    const v = values[i] / 127, pole = v < 0 ? down : up, t = Math.min(Math.abs(v), 1) ** 0.8;
+    for (let c = 0; c < 3; c++) image.data[4 * i + c] = mid[c] + (pole[c] - mid[c]) * t;
+    image.data[4 * i + 3] = 255;
+  }
+  g.putImageData(image, 0, 0);
+}
+const hz = (f) => f >= 1000 ? (f / 1000).toFixed(1) + " kHz" : Math.round(f) + " Hz";
+function drawRows() {
+  const host = $("scales"), current = signal();
+  host.textContent = "";
+  const widest = Math.max(...current.rows.map((r) => Math.abs(r.share)), 1e-9);
+  current.rows.forEach((row, k) => {
+    const node = html("div", "scale" + (row.on ? "" : " off"), host);
+    const box = html("input", "", node);
+    box.type = "checkbox"; box.checked = row.on;
+    box.setAttribute("aria-label", "Scale " + row.period);
+    html("span", "period", node, row.period);
+    const strip = html("canvas", "strip", node);
+    strip.style.imageRendering = "auto";
+    paintStrip(strip, row.values);
+    strip.addEventListener("click", (e) => seekTo((e.clientX - strip.getBoundingClientRect().left) / strip.getBoundingClientRect().width));
+    const share = html("div", "share", node);
+    html("i", "", share).style.width = 2.2 * Math.abs(row.share) / widest + "rem";
+    html("b", "", share, (100 * row.share).toFixed(row.share < 0.1 ? 1 : 0) + "%");
+    const heard = html("span", "heard", node, state.level === 0 ? hz(row.hz * current.speedup) : hz(row.heard[state.level]));
+    box.addEventListener("change", () => { row.on = box.checked; node.classList.toggle("off", !row.on); applyGains(); drawSum(); drawHeard(); });
+    row.node = node; row.box = box; row.strip = strip;
+    if (k === 0) row.first = true;
+  });
+  if (!current.variable.includes("*")) { // a flux is the sum of its scales, so it has no trend
+    const trend = html("div", "scale extra" + (state.trend ? "" : " off"), host);
+    const box = html("input", "", trend);
+    box.type = "checkbox"; box.checked = state.trend;
+    box.setAttribute("aria-label", "Trend");
+    html("span", "period", trend, "Trend");
+    html("span", "strip-note", trend, "Chart only: the mean and everything slower than the coarsest scale, too slow to hear");
+    html("span", "", trend); html("span", "", trend);
+    box.addEventListener("change", () => { state.trend = box.checked; trend.classList.toggle("off", !box.checked); applyGains(); drawSum(); drawHeard(); });
+  }
+  for (const stem of (stemsOf() || [])) {
+    if (stem.row !== null || stem.name === "trend") continue;
+    const node = html("div", "scale extra", host);
+    const toggle = html("input", "", node);
+    toggle.type = "checkbox"; toggle.checked = state.extras[stem.name] !== false;
+    toggle.setAttribute("aria-label", stem.label);
+    html("span", "period", node, stem.short);
+    html("span", "strip-note", node, "Sound only: " + stem.label.charAt(0).toLowerCase() + stem.label.slice(1));
+    html("span", "", node); html("span", "", node);
+    toggle.addEventListener("change", () => { state.extras[stem.name] = toggle.checked; applyGains(); drawHeard(); });
+  }
+  applyView();
+  placeHead();
+}
+function stemsOf() { return signal().stems[state.level]; }
+
+/* ---- heard frequency: the same rows, on the axis of the ear ------------------------------- */
+const spectra = new Map();
+const spectrumFile = () => stemsOf()[0].file.replace(".mp3", ".png");
+const [DB_LOW, DB_HIGH] = MODEL.heardDb;
+const POWER = Float64Array.from({ length: 256 }, (_, v) => v ? 10 ** ((DB_LOW + v / 255 * (DB_HIGH - DB_LOW)) / 10) : 0);
+async function loadSpectrum() {
+  const file = spectrumFile();
+  if (spectra.has(file)) return;
+  const image = new Image();
+  image.src = file;
+  await image.decode();
+  const canvas = document.createElement("canvas");
+  canvas.width = image.width; canvas.height = image.height;
+  const g = canvas.getContext("2d", { willReadFrequently: true });
+  g.drawImage(image, 0, 0);
+  const rgba = g.getImageData(0, 0, image.width, image.height).data, grey = new Uint8Array(image.width * image.height);
+  for (let i = 0; i < grey.length; i++) grey[i] = rgba[4 * i];
+  spectra.set(file, { grey, width: image.width });
+}
+function ramp() {
+  const stops = [hexToRgb(token("--mid")), hexToRgb(token("--down")), hexToRgb(token("--ink"))];
+  return Array.from({ length: 256 }, (_, v) => {
+    const t = v / 255 * 2, k = Math.min(Math.floor(t), 1), f = t - k;
+    return stops[k].map((c, i) => c + (stops[k + 1][i] - c) * f);
+  });
+}
+function drawHeard() {
+  if (state.view !== "heard") return;
+  const spectrum = spectra.get(spectrumFile());
+  if (!spectrum) return;
+  const canvas = $("heard-canvas"), width = spectrum.width, height = MODEL.heardRows, plane = width * height;
+  canvas.width = width; canvas.height = height;
+  const g = canvas.getContext("2d"), image = g.createImageData(width, height), colours = ramp();
+  const on = stemsOf().map((stem, k) => isOn(stem) ? k : -1).filter((k) => k >= 0);
+  for (let i = 0; i < plane; i++) {
+    let power = 0;
+    for (const k of on) power += POWER[spectrum.grey[k * plane + i]];
+    const v = power > 0 ? clamp(Math.round((10 * Math.log10(power) - DB_LOW) / (DB_HIGH - DB_LOW) * 255), 0, 255) : 0;
+    const colour = colours[v];
+    image.data[4 * i] = colour[0]; image.data[4 * i + 1] = colour[1]; image.data[4 * i + 2] = colour[2]; image.data[4 * i + 3] = 255;
+  }
+  g.putImageData(image, 0, 0);
+}
+function placeHeard() {
+  const rows = signal().rows, panel = $("scales-panel").getBoundingClientRect();
+  const first = rows[0].strip && rows[0].strip.getBoundingClientRect(), last = rows[rows.length - 1].strip && rows[rows.length - 1].strip.getBoundingClientRect();
+  if (!first || !last) return;
+  const box = $("heard").style;
+  box.left = first.left - panel.left + "px"; box.top = first.top - panel.top + "px";
+  box.width = first.width + "px"; box.height = last.bottom - first.top + "px";
+}
+function applyView() {
+  const heard = state.view === "heard";
+  $("scales-panel").classList.toggle("view-heard", heard);
+  $("heard").hidden = !heard;
+  $("legend-low").textContent = heard ? "quiet" : "below zero";
+  $("legend-high").textContent = heard ? "loud" : "above zero";
+  $("legend-bar").style.background = heard ? "linear-gradient(90deg, var(--mid), var(--down), var(--ink))" : "linear-gradient(90deg, var(--down), var(--mid), var(--up))";
+  if (!heard) return;
+  placeHeard();
+  loadSpectrum().then(drawHeard).catch(() => { $("clock").textContent = "The picture did not load. Reload the page."; });
+}
+
+/* ---- what the chosen scales add up to ---------------------------------------------------- */
+function chosenSum() {
+  const current = signal(), n = current.signalLine.length, out = new Float32Array(n);
+  if (state.trend) for (let i = 0; i < n; i++) out[i] += current.trendLine[i];
+  for (const row of current.rows) if (row.on) for (let i = 0; i < n; i++) out[i] += row.means[i];
+  return out;
+}
+const PLOT = { left: 44, right: 6, top: 6, bottom: 18 };
+function niceTicks(low, high) {
+  const raw = (high - low) / 3, power = 10 ** Math.floor(Math.log10(raw || 1));
+  const step = [1, 2, 5, 10].map((m) => m * power).find((s) => s >= raw) || power;
+  const ticks = [];
+  for (let t = Math.ceil(low / step) * step; t <= high + 1e-9; t += step) ticks.push(Math.round(t / step) * step);
+  return ticks;
+}
+function prepare(canvas) {
+  const ratio = window.devicePixelRatio || 1, width = canvas.clientWidth, height = canvas.clientHeight;
+  canvas.width = width * ratio; canvas.height = height * ratio;
+  const g = canvas.getContext("2d");
+  g.setTransform(ratio, 0, 0, ratio, 0, 0);
+  g.clearRect(0, 0, width, height);
+  g.font = "10.5px " + token("--mono");
+  return { g, width, height };
+}
+function axes(g, width, height, low, high, xTicks) {
+  const y = (v) => PLOT.top + (high - v) / (high - low) * (height - PLOT.top - PLOT.bottom);
+  g.lineWidth = 1; g.textBaseline = "middle"; g.textAlign = "right";
+  for (const tick of niceTicks(low, high)) {
+    g.strokeStyle = token("--line");
+    g.beginPath(); g.moveTo(PLOT.left, Math.round(y(tick)) + 0.5); g.lineTo(width - PLOT.right, Math.round(y(tick)) + 0.5); g.stroke();
+    g.fillStyle = token("--ink-3");
+    g.fillText(String(Number(tick.toPrecision(4))), PLOT.left - 5, y(tick));
+  }
+  g.textBaseline = "alphabetic";
+  for (const [share, label] of xTicks) {
+    g.fillStyle = token("--ink-3");
+    g.textAlign = share === 0 ? "left" : share === 1 ? "right" : "center";
+    g.fillText(label, PLOT.left + share * (width - PLOT.left - PLOT.right), height - 4);
+  }
+  return y;
+}
+function stroke(g, series, width, y, color, lineWidth) {
+  g.strokeStyle = color; g.lineWidth = lineWidth; g.lineJoin = "round";
+  g.beginPath();
+  for (let i = 0; i < series.length; i++) {
+    const x = PLOT.left + i / (series.length - 1) * (width - PLOT.left - PLOT.right);
+    if (i) g.lineTo(x, y(series[i])); else g.moveTo(x, y(series[i]));
+  }
+  g.stroke();
+}
+let chosen = null;
+function drawSum() {
+  const canvas = $("sum");
+  if (!canvas.clientWidth) return;
+  const { g, width, height } = prepare(canvas), current = signal();
+  chosen = chosenSum();
+  let low = Infinity, high = -Infinity;
+  for (const series of [current.signalLine, chosen]) for (const v of series) { low = Math.min(low, v); high = Math.max(high, v); }
+  const pad = (high - low) * 0.05 || 1;
+  const ticks = [0, 5, 10, 15, 20, 25, 30].map((m) => [m / 30, m + " min"]);
+  const y = axes(g, width, height, low - pad, high + pad, ticks);
+  stroke(g, current.signalLine, width, y, token("--line-strong"), 1.5);
+  stroke(g, chosen, width, y, token("--ink"), 1.5);
+}
+function timeLabel(share) {
+  const seconds = Math.round(share * 1800);
+  return String(Math.floor(seconds / 60)).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0");
+}
+function hoverSum(event) {
+  const canvas = $("sum"), box = canvas.getBoundingClientRect(), tip = $("sum-tip");
+  const share = clamp((event.clientX - box.left - PLOT.left) / (box.width - PLOT.left - PLOT.right), 0, 1);
+  const i = Math.round(share * (chosen.length - 1));
+  tip.hidden = false;
+  tip.querySelector("strong").textContent = Number(chosen[i].toPrecision(4)) + " " + signal().unit;
+  tip.querySelector("span").textContent = timeLabel(share) + ", signal " + Number(signal().signalLine[i].toPrecision(4));
+  const at = event.clientX - box.left + 10, right = at > box.width - 190;
+  tip.style.top = "0.4rem";
+  tip.style.left = right ? "auto" : at + "px";
+  tip.style.right = right ? box.width - at + 26 + "px" : "auto";
+}
+
+/* ---- sound: stems, all playing, each with its own switch --------------------------------- */
+let ctx = null, master = null, playing = false, startedAt = 0, offset = 0, running = [], request = 0;
+const buffers = new Map(), packs = new Map();
+function audio() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "playback" });
+    master = ctx.createDynamicsCompressor();
+    master.threshold.value = -6; master.ratio.value = 4; master.attack.value = 0.004;
+    master.connect(ctx.destination);
+  }
+  return ctx;
+}
+const stemKey = (stem) => stem.file + "#" + stem.offset;
+async function loadStems() {
+  const stems = stemsOf(), button = $("play"), file = stems[0].file;
+  if (!packs.has(file)) {
+    const response = await fetch(file);
+    if (!response.ok) throw new Error(String(response.status));
+    packs.set(file, await response.arrayBuffer());
+  }
+  let done = 0;
+  await Promise.all(stems.map(async (stem) => {
+    if (!buffers.has(stemKey(stem))) {
+      const slice = packs.get(file).slice(stem.offset, stem.offset + stem.length);
+      buffers.set(stemKey(stem), await audio().decodeAudioData(slice));
+    }
+    done++;
+    button.textContent = Math.round(100 * done / stems.length) + "%";
+  }));
+  button.textContent = playing ? "Pause" : "Play";
+  return { stems };
+}
+function isOn(stem) {
+  if (stem.row !== null) return signal().rows[stem.row].on;
+  if (stem.name === "trend") return state.trend;
+  return state.extras[stem.name] !== false;
+}
+function applyGains() {
+  for (const { stem, gain } of running) gain.gain.setTargetAtTime(isOn(stem) ? 1 : 0, ctx.currentTime, 0.02);
+}
+function halt() {
+  for (const { node } of running) { node.onended = null; node.stop(); }
+  running = [];
+}
+const position = () => playing ? offset + ctx.currentTime - startedAt : offset;
+function placeHead() {
+  const row = signal().rows[0], panel = $("scales-panel").getBoundingClientRect();
+  if (!row.strip) return;
+  const box = row.strip.getBoundingClientRect(), head = $("playhead");
+  const share = clamp(position() / MODEL.seconds, 0, 1);
+  head.style.left = box.left - panel.left + share * box.width + "px";
+  head.style.height = $("scales").getBoundingClientRect().bottom - panel.top + "px";
+  $("clock").textContent = timeLabel(share).slice(0, 5) + " of 30 min";
+}
+async function play(from) {
+  const mine = ++request;
+  await audio().resume();
+  $("play").textContent = "Loading";
+  let stems;
+  try {
+    ({ stems } = await loadStems());
+  } catch (error) {
+    $("play").textContent = "Play";
+    $("clock").textContent = "Sound did not load. Reload the page.";
+    return;
+  }
+  if (mine !== request) return;
+  drawRows();
+  halt();
+  offset = from;
+  const when = ctx.currentTime + 0.05;
+  startedAt = when;
+  let longest = 0;
+  for (const stem of stems) {
+    const buffer = buffers.get(stemKey(stem)), node = ctx.createBufferSource(), gain = ctx.createGain();
+    node.buffer = buffer;
+    gain.gain.value = isOn(stem) ? 1 : 0;
+    node.connect(gain); gain.connect(master);
+    node.start(when, Math.min(from, buffer.duration));
+    running.push({ stem, node, gain });
+    longest = Math.max(longest, buffer.duration);
+  }
+  playing = true;
+  $("play").textContent = "Pause";
+  const last = running[0].node;
+  last.onended = () => { if (running.length && running[0].node === last) { stopAll(); offset = 0; placeHead(); } };
+}
+function stopAll() {
+  offset = position();
+  halt();
+  playing = false;
+  request++;
+  $("play").textContent = "Play";
+}
+function seekTo(share) {
+  const target = clamp(share, 0, 1) * MODEL.seconds;
+  if (playing) play(target); else { offset = target; placeHead(); }
+}
+function restart() {
+  const was = playing, at = position();
+  if (was) stopAll();
+  offset = at;
+  drawRows(); drawSum();
+  if (was) play(at);
+}
+function frame() {
+  if (playing) placeHead();
+  if (dayClip.node) { drawDay(); dayClock(); }
+  requestAnimationFrame(frame);
+}
+
+/* ---- the day ----------------------------------------------------------------------------- */
+const DAY_SECONDS = 63;
+const dayClip = { buffer: null, node: null, at: 0, started: 0 };
+const dayPosition = () => dayClip.node ? dayClip.at + ctx.currentTime - dayClip.started : dayClip.at;
+function dayStop() {
+  if (!dayClip.node) return;
+  dayClip.at = dayPosition();
+  dayClip.node.onended = null;
+  dayClip.node.stop();
+  dayClip.node = null;
+  $("day-play").textContent = "Play";
+}
+async function dayStart() {
+  await audio().resume();
+  if (!dayClip.buffer) {
+    $("day-play").textContent = "Loading";
+    const response = await fetch("audio/day.mp3");
+    if (!response.ok) throw new Error(String(response.status));
+    dayClip.buffer = await ctx.decodeAudioData(await response.arrayBuffer());
+  }
+  const node = ctx.createBufferSource();
+  node.buffer = dayClip.buffer;
+  node.connect(master);
+  node.start(0, dayClip.at);
+  dayClip.node = node; dayClip.started = ctx.currentTime;
+  node.onended = () => { dayClip.node = null; dayClip.at = 0; $("day-play").textContent = "Play"; drawDay(); dayClock(); };
+  $("day-play").textContent = "Pause";
+}
+function drawDay() {
+  const canvas = $("day-chart");
+  if (!canvas.clientWidth) return;
+  const { g, width, height } = prepare(canvas);
+  const ticks = [6, 12, 18].map((h) => [(h - DAY.hour[0]) / (DAY.hour[DAY.hour.length - 1] - DAY.hour[0]) * (60 / 63), String(h).padStart(2, "0") + ":00"]);
+  const y = axes(g, width, height, Math.min(-0.3, Math.min(...DAY.r) - 0.05), Math.max(0.3, Math.max(...DAY.r) + 0.05), ticks);
+  const plot = width - PLOT.left - PLOT.right;
+  g.fillStyle = token("--raised");
+  g.fillRect(PLOT.left, y(0.15), plot, y(-0.15) - y(0.15));
+  g.strokeStyle = token("--ink"); g.lineWidth = 1.5; g.lineJoin = "round";
+  g.beginPath();
+  DAY.t.forEach((t, i) => {
+    const x = PLOT.left + t / 63 * plot;
+    if (i) g.lineTo(x, y(DAY.r[i])); else g.moveTo(x, y(DAY.r[i]));
+  });
+  g.stroke();
+  const at = PLOT.left + dayPosition() / DAY_SECONDS * plot;
+  if (dayPosition() > 0) {
+    g.strokeStyle = token("--up"); g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(at, PLOT.top); g.lineTo(at, height - PLOT.bottom); g.stroke();
+  }
+}
+function dayClock() {
+  const hour = DAY.hour[0] + clamp(dayPosition() / 60, 0, 1) * (DAY.hour[DAY.hour.length - 1] - DAY.hour[0]);
+  const minutes = Math.round(hour * 60);
+  $("day-clock").textContent = String(Math.floor(minutes / 60)).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0");
+}
+
+/* ---- wiring ------------------------------------------------------------------------------ */
+function wire() {
+  MODEL.signals.forEach((item, k) => {
+    const button = html("button", "", $("signals"), item.short);
+    button.type = "button"; button.title = item.label;
+    button.addEventListener("click", () => {
+      state.signal = k;
+      document.querySelectorAll("#signals button").forEach((b, i) => b.setAttribute("aria-pressed", i === k));
+      restart();
+    });
+  });
+  ["L0", "L1", "L2"].forEach((label, k) => {
+    const button = html("button", "", $("levels"), label);
+    button.type = "button";
+    button.title = ["The waveform itself", "Scales moved into hearing range", "Music"][k];
+    button.addEventListener("click", () => {
+      state.level = k;
+      document.querySelectorAll("#levels button").forEach((b, i) => b.setAttribute("aria-pressed", i === k));
+      restart();
+    });
+  });
+  document.querySelectorAll("#signals button")[0].setAttribute("aria-pressed", true);
+  document.querySelectorAll("#levels button").forEach((b, i) => b.setAttribute("aria-pressed", i === state.level));
+  [["heard", "Heard frequency"], ["period", "Period"]].forEach(([view, label]) => {
+    const button = html("button", "", $("views"), label);
+    button.type = "button"; button.dataset.view = view;
+    button.setAttribute("aria-pressed", state.view === view);
+    button.addEventListener("click", () => {
+      state.view = view;
+      document.querySelectorAll("#views button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.view === view));
+      applyView();
+    });
+  });
+  const [low, high] = MODEL.heardRange;
+  [[100, "100 Hz"], [1000, "1 kHz"], [10000, "10 kHz"]].forEach(([f, label]) => {
+    html("span", "", $("heard-axis"), label).style.top = 100 * (1 - Math.log(f / low) / Math.log(high / low)) + "%";
+  });
+  $("heard-canvas").addEventListener("click", (e) => {
+    const box = e.target.getBoundingClientRect();
+    seekTo((e.clientX - box.left) / box.width);
+  });
+  const axis = $("time-axis");
+  ["0", "10", "20", "30 min"].forEach((label, k) => { html("span", "", axis, label).style.left = k / 3 * 100 + "%"; });
+  $("play").addEventListener("click", () => {
+    dayStop();
+    if (playing) stopAll(); else play(offset >= MODEL.seconds ? 0 : offset);
+  });
+  document.querySelectorAll("[data-set]").forEach((button) => button.addEventListener("click", () => {
+    const set = button.dataset.set;
+    for (const row of signal().rows) {
+      const period = 1.5 / row.hz;
+      row.on = set === "all" || (set === "large" && period >= 10) || (set === "small" && period < 10);
+    }
+    drawRows(); applyGains(); drawSum();
+  }));
+  const sum = $("sum");
+  sum.addEventListener("pointermove", hoverSum);
+  sum.addEventListener("pointerleave", () => { $("sum-tip").hidden = true; });
+  sum.addEventListener("click", (event) => {
+    const box = sum.getBoundingClientRect();
+    seekTo((event.clientX - box.left - PLOT.left) / (box.width - PLOT.left - PLOT.right));
+  });
+  $("day-play").addEventListener("click", () => {
+    if (dayClip.node) { dayStop(); return; }
+    if (playing) stopAll();
+    dayStart().catch(() => { $("day-play").textContent = "Play"; $("day-clock").textContent = "Sound did not load. Reload the page."; });
+  });
+  const dayChart = $("day-chart");
+  dayChart.addEventListener("click", (event) => {
+    const box = dayChart.getBoundingClientRect(), running = !!dayClip.node;
+    dayStop();
+    dayClip.at = clamp((event.clientX - box.left - PLOT.left) / (box.width - PLOT.left - PLOT.right), 0, 1) * DAY_SECONDS;
+    if (running) dayStart();
+    drawDay(); dayClock();
+  });
+  dayChart.addEventListener("pointermove", (event) => {
+    const box = dayChart.getBoundingClientRect(), tip = $("day-tip");
+    const t = clamp((event.clientX - box.left - PLOT.left) / (box.width - PLOT.left - PLOT.right), 0, 1) * 63;
+    let k = 0;
+    DAY.t.forEach((value, i) => { if (Math.abs(value - t) < Math.abs(DAY.t[k] - t)) k = i; });
+    const minutes = Math.round(DAY.hour[k] * 60);
+    tip.hidden = false;
+    tip.querySelector("strong").textContent = "r = " + DAY.r[k].toFixed(2);
+    tip.querySelector("span").textContent = String(Math.floor(minutes / 60)).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0");
+    const at = event.clientX - box.left + 10, right = at > box.width - 120;
+    tip.style.top = "0.4rem";
+    tip.style.left = right ? "auto" : at + "px";
+    tip.style.right = right ? box.width - at + 26 + "px" : "auto";
+  });
+  dayChart.addEventListener("pointerleave", () => { $("day-tip").hidden = true; });
+  new ResizeObserver(() => { drawSum(); drawDay(); placeHead(); placeHeard(); }).observe($("sum"));
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { drawRows(); drawSum(); drawDay(); drawHeard(); });
+}
+wire();
+drawRows(); drawSum(); drawDay();
+requestAnimationFrame(frame);
+window.decomposition = { state, MODEL, play, stopAll, position, buffers, dayClip, spectra };
+})();
+</script>
