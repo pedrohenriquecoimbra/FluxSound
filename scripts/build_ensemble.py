@@ -1,7 +1,7 @@
 """Build the ensemble app into dist/ensemble.
 
 Downloads daily ICOS FLUXNET data, keeps the sites with at least 95% of every
-variable in a year, and writes a static page. Needs the ``apps`` extra.
+variable in a year, and writes a static page. Needs ``requirements.txt``.
 
     python scripts/build_ensemble.py
 """
@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from fluxsound import INSTRUMENTS
+from fluxscale.extra.sonification import INSTRUMENTS
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "apps" / "ensemble"

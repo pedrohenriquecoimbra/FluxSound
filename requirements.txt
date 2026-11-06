@@ -1,0 +1,8 @@
+# What the build scripts need. fluxscale comes from its repository until it is on PyPI.
+fluxscale @ git+https://github.com/pedrohenriquecoimbra/wavelet-ec.git
+mido>=1.3
+soundfile>=0.12
+pillow
+zarr
+fsspec
+aiohttp

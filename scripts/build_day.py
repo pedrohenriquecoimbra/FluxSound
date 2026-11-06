@@ -1,6 +1,6 @@
 """Render the whole day of w*co2 for the decomposition app.
 
-Needs the 20 Hz level-6 files of the FR-Gri sample, which live in the waveletec
+Needs the 20 Hz level-6 files of the FR-Gri sample, which live in the fluxscale
 repository and are too big to keep here, so the results are kept instead:
 ``apps/decomposition/day.mp3`` and ``day.json``.
 
@@ -17,10 +17,9 @@ from pathlib import Path
 import numpy as np
 import soundfile
 import xarray as xr
-from waveletec.extra import eddypro  # noqa: F401  (registers the level-6 reader)
-from waveletec.io import READERS
-
-from fluxsound import sonification as so
+from fluxscale.extra import eddypro  # noqa: F401  (registers the level-6 reader)
+from fluxscale.extra import sonification as so
+from fluxscale.io import READERS
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "apps" / "decomposition"

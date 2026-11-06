@@ -55,6 +55,8 @@ th:first-child { text-align: left; padding-left: 0.7rem; font: 500 0.72rem/1.3 v
 th { font-weight: 500; color: var(--ink-3); }
 td { color: var(--ink-2); }
 .locked { color: var(--ink); font-weight: 500; }
+a.quiet { text-decoration: none; white-space: nowrap; }
+a.quiet:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
 @media (max-width: 44rem) {
   .head, .scale { grid-template-columns: 1.4rem 5.4rem minmax(0, 1fr) 3.2rem; gap: 0.4rem; padding-inline: 0.5rem; }
   .heard, .head .h-heard { display: none; }
@@ -70,10 +72,11 @@ td { color: var(--ink-2); }
     <div class="seg" id="views" role="group" aria-label="What the rows show"></div>
     <div class="grow"></div>
     <span class="mono" id="clock">00:00 of 30 min</span>
+    <a class="quiet" id="midi" download>Download MIDI</a>
     <button class="primary" id="play" type="button">Play</button>
   </header>
 
-  <p class="lead">Half an hour of 20 Hz data from the FR-Gri tower, split into wavelet scales with waveletec. Turn scales on and off: the picture, the chart and the sound follow. L0 is the waveform itself, L1 the same scales moved into hearing range, L2 the music. Heard frequency shows where each level puts the sound; Period shows the scales themselves.</p>
+  <p class="lead">Half an hour of 20 Hz data from the FR-Gri tower, split into wavelet scales with FluxScale. Turn scales on and off: the picture, the chart and the sound follow. L0 is the waveform itself, L1 the same scales moved into hearing range, L2 the music. Heard frequency shows where each level puts the sound; Period shows the scales themselves. Download MIDI takes the L2 music of the chosen signal to a DAW or MuseScore, with a track per scale and per melody line.</p>
 
   <section class="panel" id="scales-panel" aria-label="Wavelet scales">
     <div class="head">
@@ -123,7 +126,7 @@ td { color: var(--ink-2); }
     </div>
   </section>
 
-  <p class="credits">Sample: FR-Gri, 13 May 2022, from the ICOS Carbon Portal, CC BY 4.0. Decomposition: db6 discrete wavelet transform from waveletec. Scales are drawn each on their own scale so that fine eddies stay visible; Share gives their real weight. For a flux, the rows show the cross-scalogram, and L0 and L1 treat the flux density as a signal of its own. Every stem comes from fluxsound and all stems sum to the mix. Nobody has listened to these yet.</p>
+  <p class="credits">Sample: FR-Gri, 13 May 2022, from the ICOS Carbon Portal, CC BY 4.0. Decomposition: db6 discrete wavelet transform from FluxScale. Scales are drawn each on their own scale so that fine eddies stay visible; Share gives their real weight. For a flux, the rows show the cross-scalogram, and L0 and L1 treat the flux density as a signal of its own. Every stem comes from FluxScale and all stems sum to the mix. Nobody has listened to these yet.</p>
 </div>
 
 <script type="application/json" id="model">@@MODEL@@</script>
@@ -532,6 +535,12 @@ function dayClock() {
 }
 
 /* ---- wiring ------------------------------------------------------------------------------ */
+function offerMidi() {
+  const current = signal(), link = $("midi");
+  link.href = current.midi;
+  link.download = "fr-gri-" + current.variable.replace("*", "-") + ".mid";
+  link.title = current.label + ": the L2 music as MIDI, with every scale, whatever is switched on here";
+}
 function wire() {
   MODEL.signals.forEach((item, k) => {
     const button = html("button", "", $("signals"), item.short);
@@ -539,9 +548,11 @@ function wire() {
     button.addEventListener("click", () => {
       state.signal = k;
       document.querySelectorAll("#signals button").forEach((b, i) => b.setAttribute("aria-pressed", i === k));
+      offerMidi();
       restart();
     });
   });
+  offerMidi();
   ["L0", "L1", "L2"].forEach((label, k) => {
     const button = html("button", "", $("levels"), label);
     button.type = "button";

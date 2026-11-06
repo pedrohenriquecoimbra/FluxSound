@@ -1,7 +1,7 @@
 """Build the decomposition app into dist/decomposition.
 
-Decomposes the sample with waveletec and renders one audio stem per scale and
-level with fluxsound. Needs the ``apps`` extra.
+Decomposes the sample and renders one audio stem per scale and level with
+fluxscale, and the L2 music of each signal as MIDI. Needs ``requirements.txt``.
 
     python scripts/build_decomposition.py
     python scripts/build_decomposition.py --page      # keep the audio, rebuild the page
@@ -22,8 +22,7 @@ import soundfile
 from PIL import Image
 from scipy import signal as spsignal
 
-from fluxsound import sonify
-from fluxsound.decomposition import decompose
+from fluxscale import decompose, export_midi, sonify
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "apps" / "decomposition"
@@ -113,6 +112,13 @@ def write_stems(table, variable, slug, level):
     return manifest, stems.attrs, names
 
 
+def write_midi(table, variable):
+    """The L2 music of one signal as MIDI, with the arguments of its stems; returns its path."""
+    path = OUT / "midi" / (variable.replace("*", "-") + ".mid")
+    export_midi(table, variable, path, duration=SECONDS, fs=FS)
+    return str(path.relative_to(OUT))
+
+
 def build_signal(table, variable, short, label, unit):
     split = decompose(table, variable, fs=FS)
     frequencies = split.frequency.values
@@ -175,11 +181,11 @@ def main():
     warnings.simplefilter("ignore")
     logging.disable(logging.WARNING)
     cached = ROOT / "dist" / "decomposition-model.json"
+    sample = np.load(ROOT / "data" / "fr-gri-2022-05-13-1230.npz")
+    table = {name: sample[name].astype(float) for name in sample.files}
     if "--page" in sys.argv or "--spectra" in sys.argv:
         signals = json.loads(cached.read_text(encoding="utf-8"))
     else:
-        sample = np.load(ROOT / "data" / "fr-gri-2022-05-13-1230.npz")
-        table = {name: sample[name].astype(float) for name in sample.files}
         if OUT.exists():
             shutil.rmtree(OUT)
         OUT.mkdir(parents=True)
@@ -190,6 +196,8 @@ def main():
         cached.write_text(json.dumps(signals, ensure_ascii=False), encoding="utf-8")
     if "--page" not in sys.argv:
         write_spectra(signals)
+    for item in signals:  # quick enough to redo every time, so --page can offer it too
+        item["midi"] = write_midi(table, item["variable"])
     day = json.loads((APP / "day.json").read_text(encoding="utf-8"))
     shutil.copy(APP / "day.mp3", OUT / "audio" / "day.mp3")
     page = (APP / "template.html").read_text(encoding="utf-8")
