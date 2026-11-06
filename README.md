@@ -1,6 +1,8 @@
 # FluxSound
 
-Hear eddy-covariance data. Built on [FluxScale](https://github.com/pedrohenriquecoimbra/wavelet-ec), which splits fluxes into wavelet scales and turns any variable into sound.
+Hear eddy-covariance data. Built on [FluxScale](https://github.com/pedrohenriquecoimbra/FluxScale), which splits fluxes into wavelet scales and turns any variable into sound.
+
+**Play online:** https://pedrohenriquecoimbra.github.io/FluxSound/
 
 Two apps, both static pages, so they can be served by any web host:
 
@@ -38,7 +40,7 @@ fluxsound.export_midi(data, "w*co2", "flux.mid")  # the same music for a DAW (pi
 fluxsound -i "level_6/20220513-12*" -v "w*co2" -o flux.wav
 ```
 
-Levels, instruments and working in a DAW are described in the [FluxScale README](https://github.com/pedrohenriquecoimbra/wavelet-ec#readme).
+Levels, instruments and working in a DAW are described in the [FluxScale README](https://github.com/pedrohenriquecoimbra/FluxScale#readme).
 
 ## Data
 
