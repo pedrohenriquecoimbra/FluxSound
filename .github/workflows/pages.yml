@@ -1,11 +1,13 @@
 name: Publish apps
 
-# Builds both apps and serves them with GitHub Pages. In the repository
-# settings, set Pages > Source to "GitHub Actions" once.
+# Builds both apps and serves them with GitHub Pages. While the repository is
+# private it only builds. Going public starts a run by itself: then set
+# Pages > Source to "GitHub Actions" in the repository settings, once.
 
 on:
   push:
     branches: [main]
+  public:
   workflow_dispatch:
 
 permissions:
@@ -32,6 +34,7 @@ jobs:
           path: dist
   deploy:
     needs: build
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
