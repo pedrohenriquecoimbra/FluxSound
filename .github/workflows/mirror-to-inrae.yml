@@ -1,0 +1,31 @@
+name: Mirror to INRAE Forge
+
+# Copies main to the INRAE forge, which builds its own site from .gitlab-ci.yml.
+# Does nothing until the repository has two secrets: INRAE_FORGE_REPO, the SSH
+# address of the forge project, and INRAE_FORGE_SSH_KEY, a private key allowed
+# to push there.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    env:
+      REPO: ${{ secrets.INRAE_FORGE_REPO }}
+      SSH_KEY: ${{ secrets.INRAE_FORGE_SSH_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+        if: env.REPO != ''
+        with:
+          fetch-depth: 0
+      - name: Push to the INRAE forge
+        if: env.REPO != ''
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan forge.inrae.fr >> ~/.ssh/known_hosts
+          git push "$REPO" HEAD:refs/heads/main

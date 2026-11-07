@@ -21,6 +21,8 @@ python -m http.server --directory dist
 
 The sources are in `apps/`. Pushing to `main` publishes them with GitHub Pages (`.github/workflows/pages.yml`); set Pages > Source to "GitHub Actions" in the repository settings once.
 
+The same push can copy the repository to the INRAE forge (`.github/workflows/mirror-to-inrae.yml`), which builds its own site with GitLab Pages (`.gitlab-ci.yml`). To turn that on, create an empty project on the forge and add two secrets to the GitHub repository: `INRAE_FORGE_REPO`, the project's SSH address, and `INRAE_FORGE_SSH_KEY`, a private key allowed to push there. For anyone to see the site, make the project public and set its Pages access to Everyone.
+
 ## Python
 
 The sound tools live in FluxScale. This package gives them a short name and a `fluxsound` command:
